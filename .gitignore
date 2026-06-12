@@ -1,0 +1,6 @@
+# Personal/runtime Claude Code state — never commit these.
+.claude/settings.local.json
+.claude/rate-limit-state.json
+.claude/stop-failure-events.jsonl
+.claude/quota-blocked.json
+.claude/scheduled_tasks.json
