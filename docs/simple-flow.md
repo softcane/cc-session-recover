@@ -1,43 +1,59 @@
-# The Simple Flow: Notebook, Alarm, Watchman
+# Simple Flow: Notebook, Alarm, Watcher
 
-This is the plain-English story of how this workflow survives quota stops.
+The workflow has three parts.
 
-## The notebook
+## Notebook
 
-Claude keeps a notebook called `HANDOFF.md` in the project root.
-After every small piece of work it writes down: the goal, what is done, and the exact next step.
-If Claude is cut off at any moment, whoever reads the notebook can continue exactly where it stopped.
-That "whoever" is usually Claude itself, later.
+Claude writes `HANDOFF.md` in the project root.
+After each small step, it records the goal, completed work, and next exact action.
 
-## The alarm
+If quota stops the session, Claude can read that file later and continue from the same point.
+You can also read it yourself and see what happened.
 
-When you give Claude a big task, it sets a repeating alarm inside the session:
-every 45 minutes, "read `.claude/auto-continue.md` and follow it."
+## Alarm
 
-- While Claude is working, the alarm is harmless.
-- If the task is already done, the alarm fire reads the notebook, sees "done", and goes back to sleep.
-- If quota cut Claude off, each alarm fire fails cheaply while quota is still blocked.
-- The first fire after the quota reset reads the notebook and continues the work.
+For a long task, Claude creates a 45-minute schedule inside the current Claude Code session:
 
-You never type anything. The one rule: the terminal must stay open, because the alarm lives inside the running session.
+```text
+Read .claude/auto-continue.md and follow it.
+```
 
-## The watchman
+Treat that schedule as the alarm.
 
-If the terminal cannot stay open, run the watchman in a second terminal:
+- If Claude still has quota, it reads `HANDOFF.md` and keeps going.
+- If the task finished, it reads `HANDOFF.md`, sees that, and stops.
+- If quota still blocks the session, the attempt fails and waits for the next alarm.
+- After quota resets, the next alarm resumes the work.
+
+The terminal must stay open.
+The alarm lives inside that running Claude Code session.
+
+## Watcher
+
+If you need to close the terminal, run the watcher from another shell:
 
 ```sh
 npx cc-session-recover watch /path/to/project
 ```
 
-When quota cuts Claude off, a hook drops a marker file with the session id.
-The watchman sees the marker and knocks every 20 minutes: "can I resume that session yet?"
-While quota is blocked: no, it waits. After the reset: yes, it resumes that exact session headlessly, hands it the notebook, and the work finishes without any window at all.
+When quota stops Claude, a hook writes a marker file with the session id.
+The watcher reads that marker and tries to resume that exact session.
 
-Use the alarm or the watchman, not both at once, or two Claudes will do the same work twice.
+While quota blocks Claude, the watcher waits.
+After quota resets, the watcher resumes the session without an open Claude Code window and gives Claude the handoff prompt.
 
-## A normal day with this installed
+Use the alarm or the watcher.
+Do not use both on the same task, because two Claude sessions can edit the same files.
 
-1. `cd` into the project and run `claude`.
-2. Give your task normally. A hook already injected the standing orders, so Claude sets up the notebook and the alarm by itself.
-3. Walk away. Quota stops are recovered automatically.
-4. Worst case, everything fails: the notebook still means you lose nothing. Type "read HANDOFF.md and continue" and you are back.
+## Normal Use
+
+1. Open the project and run `claude`.
+2. Give Claude the task.
+3. Let the hook inject the standing instructions.
+4. Leave the terminal open, or run the watcher if you need to close it.
+
+If everything else fails, run `claude` again and type:
+
+```text
+Read HANDOFF.md and continue.
+```

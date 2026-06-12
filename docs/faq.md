@@ -1,37 +1,47 @@
 # FAQ
 
-Honest answers, including the parts that are not proven.
+## Where Does The 45-Minute Alarm Live?
 
-## Where does the 45-minute alarm live?
+Claude Code keeps the alarm inside the running session.
+It does not create a cron job, a launchd job, or a file on disk.
 
-Inside the running Claude Code session, in memory.
-It is not a system cron job, not a launchd job, and not a file on disk.
-The standing-instructions hook asks Claude to create it at task start, and Claude creates it with Claude Code's built-in scheduler.
-Because it lives in the process, closing the terminal kills it.
+The standing-instructions hook asks Claude to create the alarm when you give a long task.
+Claude creates it with the Claude Code scheduler.
 
-## Is this 100% reliable?
+If you close the terminal, the session ends and the alarm dies.
 
-No. Three layers, three confidence levels:
+## Is This 100% Reliable?
 
-- The scripts and the watchman: tested end to end with real sessions. Strong.
-- The harness behavior (hooks firing, schedules firing): documented by Claude Code, and the injection and resume paths were verified live.
-- Claude obeying the standing orders (keeping the notebook fresh, arming the alarm): this is a model following instructions. It is very reliable, not guaranteed. This is the weakest link.
+No.
 
-The first genuine quota stop is the final exam: afterwards, check `.claude/stop-failure-events.jsonl` to confirm the hook fired for real.
+The scripts and watcher have end-to-end tests.
+The Claude Code hooks and schedules use documented behavior.
+The weak part is Claude following the injected instructions, such as keeping `HANDOFF.md` fresh and creating the alarm.
 
-## What still needs a human?
+After your first real quota stop, check `.claude/stop-failure-events.jsonl`.
+That file confirms whether the hook fired.
 
-- Opening the session and giving the task.
-- Keeping the terminal open for the alarm, or starting the watchman if it cannot stay open.
-- Approving the hooks once per project, the first time Claude Code sees them.
-- Judging the finished work. The workflow recovers progress; it does not review quality.
+## What Still Needs A Human?
 
-## What happens if the terminal closes?
+You still need to:
 
-The alarm dies with the session, but nothing is lost:
+- Start Claude Code.
+- Give the task.
+- Approve the hooks once per project.
+- Keep the terminal open for the alarm, or run the watcher from another shell.
+- Review the finished work.
 
-- The notebook (`HANDOFF.md`) is still on disk with the exact next step.
-- If the watchman is running and a quota stop was recorded, it resumes the session headlessly on its own.
-- Otherwise, reopen the project, run `claude`, and say: "Read HANDOFF.md and continue."
+The workflow resumes progress.
+It does not judge quality.
 
-Worst case equals one typed line, never lost work.
+## What Happens If The Terminal Closes?
+
+The alarm stops with the session.
+Your work state remains in `HANDOFF.md`.
+
+If the watcher runs and the hook recorded a quota stop, the watcher resumes the saved session.
+If the watcher does not run, reopen the project, start `claude`, and type:
+
+```text
+Read HANDOFF.md and continue.
+```

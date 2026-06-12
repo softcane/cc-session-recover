@@ -1,31 +1,31 @@
 # Claude Code Quota Resume Workflow
 
-This workflow helps Claude Code continue after a quota or rate limit pause without a new prompt from you.
+Use this workflow when Claude Code hits a quota or rate limit pause and you do not want to send another prompt.
 
-The mechanism is a fresh handoff file plus a recurring in-session heartbeat armed at task start.
+It uses `HANDOFF.md` plus a recurring in-session heartbeat.
 It does not bypass quota.
-It only waits until quota should be available again.
+It waits until quota becomes available again.
 
-## Automatic Injection Through Hooks
+## Hook Behavior
 
-Hook events differ in what they are allowed to do:
+Claude Code hooks can do different things:
 
-- `SessionStart` can inject context: anything its script prints to stdout is added to Claude's context for the session.
-- `UserPromptSubmit` can also inject context, alongside each prompt you send.
-- `StopFailure` can only observe: its output is ignored, so it can log and write files but never inject a prompt or schedule anything.
+- `SessionStart` can add text to Claude's session context.
+- `UserPromptSubmit` can add text beside each prompt you send.
+- `StopFailure` can log data and write files. It cannot inject a prompt or create a schedule.
 
-This template uses `SessionStart` to inject `.claude/standing-instructions.md` at the start of every session.
-That file tells Claude to keep the handoff fresh, arm the 45-minute heartbeat for any multi-step task, and cancel it when done.
-With the local hook settings enabled, you never paste the setup message again.
+The template uses `SessionStart` to inject `.claude/standing-instructions.md`.
+Those instructions tell Claude to keep `HANDOFF.md` fresh, create a 45-minute heartbeat for long tasks, and cancel the heartbeat when the task ends.
 
-One honest limit: injected instructions are still instructions.
-The harness guarantees Claude receives them, and the heartbeat schedule itself is enforced by the harness once created, but creating it is something Claude does in response to the injected text.
+The hook guarantees Claude receives the instructions.
+Claude still has to follow them.
 
-## Recommended Flow: Heartbeat Armed At Task Start
+## Recommended Flow
 
-With the hook enabled, just give Claude the task; the arming instructions are injected for you.
-Without it, arm the heartbeat when you give the task, not when quota is about to run out.
-You do not need to know the reset time.
+With hooks enabled, start `claude` and give the task.
+Claude receives the setup instructions at session start.
+
+Without hooks, include this setup with the task:
 
 ```text
 Keep HANDOFF.md updated after every small safe step.
@@ -37,110 +37,126 @@ Read .claude/auto-continue.md and follow it.
 Cancel that schedule when the task is fully complete.
 ```
 
-How it behaves:
+The heartbeat behaves like this:
 
-- While Claude is working, the session is busy, so heartbeat fires wait or pass quickly.
-- If quota blocks a turn, the session goes idle and each heartbeat fire fails cheaply, about once per interval.
-- The first fire after the quota reset reads `HANDOFF.md` and continues the task to completion.
-- The prompt in `.claude/auto-continue.md` is safe to fire at any time, so a fire after completion is a no-op.
+- While Claude works, the session stays busy and the heartbeat waits.
+- If quota blocks a turn, each heartbeat attempt fails while quota remains blocked.
+- After quota resets, the next heartbeat reads `HANDOFF.md` and continues the task.
+- `.claude/auto-continue.md` is safe to fire at any time, so a late heartbeat after completion stops cleanly.
 
 The terminal must stay open for the heartbeat.
-Use an interval of 30 to 60 minutes.
+Use a 30 to 60 minute interval.
 Do not use a one-minute interval.
 
-## Install In Any Project
+## Install In A Project
 
-From the template folder:
+From npm:
 
 ```sh
-cd /path/to/cc-session-recover
+npx cc-session-recover@latest init /path/to/project
+```
+
+From a clone of this repo:
+
+```sh
 bash scripts/install-into-project.sh /path/to/project
 ```
 
-Hooks are enabled by default; pass `--no-hooks` to install the files without activating anything.
-Claude Code asks you to approve the hooks once on the next start either way.
+The installer enables hooks by default.
+Pass `--no-hooks` if you only want to copy the files.
 
-The quota-stop hook is a logger plus a marker writer.
-It cannot schedule the same-session resume by itself.
-The marker feeds the optional unattended watcher described below.
+Claude Code asks you to approve the hooks once on the next start.
 
-## The Handoff File
+The quota-stop hook writes logs and a marker file.
+It cannot resume the same session by itself.
+The optional watcher uses that marker.
 
-The handoff is the recovery file for the current task.
-It should stay fresh while Claude works.
-Do not wait until the quota is almost gone.
-Claude may not always know that a quota stop is about to happen.
+## Handoff File
 
-The heartbeat prompt in `.claude/auto-continue.md` keeps working through the remaining checklist until the task is complete or blocked, because a one-step-per-fire prompt would never finish a real task.
+`HANDOFF.md` stores the current task state.
+Claude should update it after each small safe step.
+
+Do not wait until quota is almost gone.
+Claude may not know that a quota stop is coming.
+
+The heartbeat prompt in `.claude/auto-continue.md` works through the remaining checklist until the task finishes or blocks.
+A one-step prompt would leave real tasks half done.
 
 Do not use `/loop 1m` or any one-minute schedule for quota recovery.
-That adds many failed attempts to the session for no benefit.
+That creates repeated failed attempts while quota stays blocked.
+
 To stop the heartbeat, ask Claude to list and cancel its scheduled tasks.
 
 ## Hooks And Status Line
 
 Claude Code status lines can receive rate-limit fields such as `rate_limits.five_hour.resets_at`.
-That is how the reset time can be shown.
+The status line can show that reset time.
 
 Claude Code hooks can detect a `rate_limit` stop through `StopFailure`.
-But `StopFailure` hooks have no decision control.
-So a hook can log or notify, but it should not be treated as a documented way to schedule a same-session resume.
+`StopFailure` has no decision control, so use it for logs and marker files only.
 
-This template includes an optional hook logger:
+The template includes:
 
 - `.claude/settings.example.json`
 - `.claude/hooks/log-stop-failure.sh`
 
-To enable it in one project, copy `.claude/settings.example.json` to `.claude/settings.local.json`.
-If that file already exists, merge the hook settings manually.
+To enable hooks in one project, copy `.claude/settings.example.json` to `.claude/settings.local.json`.
+If `.claude/settings.local.json` already exists, merge the settings by hand.
 
-When quota stops a turn, the hook appends a short note to `HANDOFF.md`.
+When quota stops a turn, the hook appends a note to `HANDOFF.md`.
 It also writes raw hook input to `.claude/stop-failure-events.jsonl` and a marker to `.claude/quota-blocked.json`.
 
 ## Optional Unattended Watcher
 
-The heartbeat needs the terminal open.
-If the terminal might close, run the watcher from another shell:
+The heartbeat needs an open terminal.
+If the terminal may close, run the watcher from another shell:
 
 ```sh
 npx cc-session-recover watch /path/to/project
 ```
 
-Or from a clone of this repo:
+Or run it from a clone:
 
 ```sh
 bash scripts/quota-watcher.sh /path/to/project
 ```
 
-It requires `jq`, the `claude` CLI on `PATH`, and the local hook enabled.
+The watcher needs `jq`, the `claude` CLI on `PATH`, and the local hook enabled.
 
-When the hook writes `.claude/quota-blocked.json`, the watcher reads the `session_id` from it and retries:
+When the hook writes `.claude/quota-blocked.json`, the watcher reads the `session_id` and retries:
 
 ```sh
 claude -p --resume <session_id> --permission-mode acceptEdits "<contents of .claude/auto-continue.md>"
 ```
 
-While quota is blocked, each attempt fails and the watcher sleeps.
-After the reset, the resume succeeds, the task continues headlessly, and the watcher clears the marker.
+While quota blocks Claude, each attempt fails and the watcher sleeps.
+After quota resets, the resume succeeds, Claude continues headlessly, and the watcher clears the marker.
 
-## Precise Resume Using The Status Line Cache
+## Precise Resume With The Status Line Cache
 
-The status line wrapper `.claude/statusline-quota-cache.sh` saves the rate-limit fields, including `five_hour.resets_at`, to `.claude/rate-limit-state.json` while you work.
-The StopFailure hook stamps that cached reset time into the quota marker.
-When the marker has a reset time, the watcher does not knock on an interval.
-It sleeps until the reset time plus `QUOTA_RESUME_BUFFER` seconds, default 900 (15 minutes), and knocks once.
-The reset time is Unix epoch seconds, so the arithmetic is timezone-safe; local time appears only in printed messages.
-The interval knocking remains only as the fallback when no reset time is known or the precise knock fails.
+`.claude/statusline-quota-cache.sh` saves rate-limit fields while you work, including `five_hour.resets_at`.
+The `StopFailure` hook copies that cached reset time into `.claude/quota-blocked.json`.
 
-To keep an existing status line, set `CLAUDE_QUOTA_STATUSLINE_DELEGATE` to its command in the `statusLine` settings entry; the wrapper caches the fields and passes the display through unchanged.
+When the marker has a reset time, the watcher sleeps until the reset time plus `QUOTA_RESUME_BUFFER` seconds.
+The default buffer is 900 seconds, or 15 minutes.
+Then the watcher tries one precise resume.
 
-Cautions:
+The reset time uses Unix epoch seconds.
+The script can compare it safely across time zones.
+Printed messages use local time.
 
-- Exit the interactive Claude Code session before relying on the watcher, or both will work the same task in parallel.
-- Headless mode cannot ask for permissions, so configure the project allowlist or accept the default `--permission-mode acceptEdits`, and understand what that allows.
-- Set `QUOTA_WATCH_INTERVAL` and `QUOTA_WATCH_CLAUDE_ARGS` to tune the retry interval and claude flags.
+If the marker has no reset time, or the precise resume fails, the watcher falls back to interval retries.
 
-## Testing The Flow Without Real Quota
+To keep an existing status line, set `CLAUDE_QUOTA_STATUSLINE_DELEGATE` to its command in the `statusLine` settings entry.
+The wrapper caches the fields and passes the display through unchanged.
+
+Before you rely on the watcher:
+
+- Exit the interactive Claude Code session, or two sessions may work on the same task.
+- Configure project permissions, or accept the default `--permission-mode acceptEdits`.
+- Set `QUOTA_WATCH_INTERVAL` and `QUOTA_WATCH_CLAUDE_ARGS` if you need different retry timing or claude flags.
+
+## Test Without Real Quota
 
 Run:
 
@@ -148,37 +164,32 @@ Run:
 bash scripts/test-fake-quota-flow.sh
 ```
 
-It tests the full chain in a throwaway dummy repo:
+The test uses a throwaway repo.
+It installs the template, sends fake hook events, writes a fake quota marker, and replaces the `claude` CLI with a stub.
+The stub fails twice to simulate blocked quota, then succeeds to simulate a reset.
 
-1. Installs the template into the dummy repo with the hook enabled.
-2. Pipes a fake `SessionStart` event into the injection hook and asserts the standing instructions come out.
-3. Pipes a fake `rate_limit` `StopFailure` event into the logger hook and asserts the log line, the handoff note, and the `quota-blocked.json` marker with the right `session_id`.
-4. Replaces the `claude` CLI with a stub that fails twice, simulating blocked quota, then succeeds, simulating the reset.
-5. Runs the real watcher against the stub and asserts it retried, resumed the exact recorded session with the auto-continue prompt, and cleared the marker.
+The test proves the watcher retries, resumes the recorded session with `.claude/auto-continue.md`, and clears the marker.
 
-The one piece this cannot fake is the in-session heartbeat schedule, because that timer lives inside a real Claude Code session.
-To check that piece live, start `claude` in a scratch repo, give it a tiny multi-step task, and confirm it creates the 45-minute schedule on its own from the injected instructions.
+The test cannot fake the in-session heartbeat schedule.
+That timer lives inside a real Claude Code session.
+To test it live, start `claude` in a scratch repo, give a small multi-step task, and confirm Claude creates the 45-minute schedule from the injected instructions.
 
 ## Why The Interactive Flow Avoids Terminal Hacks
 
-The in-session flow uses the original Claude Code terminal.
-It avoids `tmux`, `screen`, `expect`, terminal-injection hacks, and `TIOCSTI`.
+The interactive flow uses the original Claude Code terminal.
+It avoids `tmux`, `screen`, `expect`, terminal injection, and `TIOCSTI`.
 
-Those tools try to control a terminal from the outside.
-That is fragile.
-It can also continue the wrong session.
+External terminal control can target the wrong session.
+The built-in scheduler runs inside the same session that has the task context.
 
-The built-in scheduler is simpler.
-It runs inside the same Claude Code session that already has the task context.
-
-The watcher's headless `claude -p --resume` is different from terminal injection.
-It is a documented CLI mode, and it targets the exact session recorded by the hook.
+The watcher's headless `claude -p --resume` call is different.
+It uses the Claude Code CLI and targets the exact session recorded by the hook.
 
 ## Verified Limits
 
 - Scheduled tasks require Claude Code v2.1.72 or newer.
-- Session scheduled tasks only fire while Claude Code is running and idle.
-- Closing the terminal or ending the session stops them.
+- Session scheduled tasks only fire while Claude Code runs and sits idle.
+- Closing the terminal or ending the session stops scheduled tasks.
 - A missed scheduled time does not catch up later unless Claude was only busy in the same open session.
 - Starting a fresh conversation clears session scheduled tasks.
 - Resuming with `claude --resume` or `claude --continue` can restore unexpired tasks.
