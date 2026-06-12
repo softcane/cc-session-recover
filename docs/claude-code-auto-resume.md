@@ -54,7 +54,7 @@ Do not use a one-minute interval.
 From the template folder:
 
 ```sh
-cd /Users/pradeepsingh/code/claude-code-workflow
+cd /path/to/claude-code-workflow
 bash scripts/install-into-project.sh /path/to/project
 ```
 

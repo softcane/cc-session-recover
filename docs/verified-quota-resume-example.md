@@ -4,7 +4,7 @@ This example uses only documented Claude Code behavior.
 
 ## Situation
 
-You are working in `/Users/pradeepsingh/code/my-app`.
+You are working in `/path/to/my-app`.
 Claude Code shows that the 5-hour quota resets at `02:10`.
 You want work to continue overnight without sending a prompt every minute.
 
