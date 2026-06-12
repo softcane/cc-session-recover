@@ -28,9 +28,6 @@ TEMPLATE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
 mkdir -p "$TARGET/.claude/hooks" "$TARGET/docs" "$TARGET/scripts"
 
-if [ ! -f "$TARGET/README.md" ]; then
-  cp "$TEMPLATE_ROOT/README.md" "$TARGET/README.md"
-fi
 cp "$TEMPLATE_ROOT/.claude/loop.md" "$TARGET/.claude/loop.md"
 cp "$TEMPLATE_ROOT/.claude/auto-continue.md" "$TARGET/.claude/auto-continue.md"
 cp "$TEMPLATE_ROOT/.claude/standing-instructions.md" "$TARGET/.claude/standing-instructions.md"

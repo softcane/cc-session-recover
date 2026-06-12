@@ -29,7 +29,7 @@ const FILES = [
   'scripts/test-fake-quota-flow.sh',
 ];
 
-const COPY_IF_MISSING = ['HANDOFF.md', 'README.md'];
+const COPY_IF_MISSING = ['HANDOFF.md'];
 
 function usage() {
   console.error('Usage: cc-session-recover init [--enable-local-hook] [target-dir]');
