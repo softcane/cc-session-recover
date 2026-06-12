@@ -25,7 +25,9 @@ fi
 
 printf '{"logged_at":"%s","rate_limit_state":%s,"hook_input":%s}\n' "$STAMP" "${RATE_STATE:-null}" "$INPUT" > "$MARKER" 2>/dev/null || true
 
-if [ -f "$HANDOFF" ]; then
+# Dedupe: during one outage every blocked retry fires this hook again, so
+# only append a note when the handoff does not already end with one.
+if [ -f "$HANDOFF" ] && ! tail -5 "$HANDOFF" | grep -Fq 'claude-code-stop-failure'; then
   {
     printf '\n<!-- claude-code-stop-failure: %s -->\n' "$STAMP"
     printf '\nAutomatic note: Claude Code hit a rate limit at %s.\n' "$STAMP"

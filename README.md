@@ -30,15 +30,18 @@ With the heartbeat armed at task start, work continues after a quota reset witho
 From this template folder:
 
 ```sh
-cd /Users/pradeepsingh/code/claude-code-workflow
+cd /path/to/claude-code-workflow
 bash scripts/install-into-project.sh /path/to/project
 ```
 
-To also install the optional local quota logger hook:
+To also enable the hooks (standing-instruction injection at session start, plus the quota stop logger):
 
 ```sh
 bash scripts/install-into-project.sh --enable-local-hook /path/to/project
 ```
+
+The first time you start `claude` in that project afterwards, Claude Code may ask you to approve the new hooks.
+Approve them once; that is a security feature, not an error.
 
 ## Use In A Project
 
@@ -98,7 +101,8 @@ bash scripts/quota-watcher.sh /path/to/project
 ```
 
 When a quota stop happens, the hook writes `.claude/quota-blocked.json`.
-The watcher then retries a headless resume of that exact session until quota is back.
+The watcher then resumes that exact session headlessly once quota is back.
+If the status line cache wrapper is configured, the marker carries the exact reset time, and the watcher sleeps until reset plus 15 minutes and knocks once; otherwise it falls back to retrying on an interval.
 Exit the interactive Claude Code session before relying on the watcher, or both will work the same task.
 
 ## Test The Flow Without Burning Quota

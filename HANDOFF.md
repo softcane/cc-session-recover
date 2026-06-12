@@ -9,24 +9,19 @@ Update it after each small step and before any long or risky step.
 
 ## Goal
 
-- Make this repo GitHub-ready, working through the checklist below in order.
-- This is also the live real-quota test: if quota stops a turn, the heartbeat resumes this work after the reset with no human prompt.
+- Not set yet.
 
 ## Current Status
 
-- Session restarted with hooks live; heartbeat job 725d39bc armed (:13/:43). Working the checklist.
+- No active task is recorded yet.
 
 ## Completed Work
 
-- `.gitignore` created excluding all runtime artifacts.
+- None yet.
 
 ## Remaining Checklist
 
-- [x] Add a `.gitignore` that excludes runtime artifacts: `.claude/settings.local.json`, `.claude/rate-limit-state.json`, `.claude/stop-failure-events.jsonl`, `.claude/quota-blocked.json`.
-- [ ] Commit the existing work in logical commits (template core; watcher and tests; status line cache and docs). Do not push anywhere.
-- [ ] Write `CHANGELOG.md` summarizing what was built and what was verified live.
-- [ ] Re-read `README.md` top to bottom as a newcomer and fix anything confusing or stale.
-- [ ] Run `bash scripts/verify-claude-loop-workflow.sh` and `bash scripts/test-fake-quota-flow.sh`; both must pass.
+- [ ] Add the next task steps here.
 
 ## Files Changed
 
@@ -42,8 +37,8 @@ Update it after each small step and before any long or risky step.
 
 ## Known Risks
 
-- Commits are local-only; nothing is pushed. The user reviews before any push.
+- None known.
 
 ## Next Exact Action
 
-- Make the logical commits: (1) core template with hooks, prompts, installer, verify script, and docs; (2) watcher and fake-quota test; (3) status line cache wrapper. Local only, no push.
+- Set the goal and first safe step when a task starts.
