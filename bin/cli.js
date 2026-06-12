@@ -32,7 +32,7 @@ const FILES = [
 const COPY_IF_MISSING = ['HANDOFF.md', 'README.md'];
 
 function usage() {
-  console.error('Usage: claude-quota-workflow init [--enable-local-hook] [target-dir]');
+  console.error('Usage: cc-session-recover init [--enable-local-hook] [target-dir]');
   process.exit(2);
 }
 
@@ -81,7 +81,7 @@ function main() {
     }
   }
 
-  console.log(`Installed Claude Code quota workflow into ${target}`);
+  console.log(`Installed Claude Code session recovery workflow into ${target}`);
   console.log('Next: start `claude` there and approve the hooks once when asked.');
 }
 

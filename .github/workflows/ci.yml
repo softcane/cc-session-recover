@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Verify workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 22
+
+      - name: Check JavaScript syntax
+        run: node --check bin/cli.js
+
+      - name: Check shell syntax
+        run: bash -n scripts/*.sh .claude/hooks/*.sh .claude/statusline-quota-cache.sh
+
+      - name: Run static workflow checks
+        run: bash scripts/verify-claude-loop-workflow.sh
+
+      - name: Run fake quota flow
+        run: bash scripts/test-fake-quota-flow.sh
+
+      - name: Smoke packaged CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          pack_dir="$(mktemp -d)"
+          target_dir="$(mktemp -d)"
+          npm pack --pack-destination "$pack_dir"
+          tarball="$(find "$pack_dir" -name 'cc-session-recover-*.tgz' -print -quit)"
+          npx -y --package "$tarball" cc-session-recover init --enable-local-hook "$target_dir"
+          test -f "$target_dir/.claude/settings.local.json"
+          test -x "$target_dir/scripts/quota-watcher.sh"

@@ -1,9 +1,13 @@
 {
-  "name": "claude-quota-workflow",
+  "name": "cc-session-recover",
   "version": "0.1.0",
   "description": "Quota-resume workflow for Claude Code: handoff notebook, heartbeat auto-continue, StopFailure hooks, and an unattended watcher that resumes after quota resets.",
+  "scripts": {
+    "check": "node --check bin/cli.js && bash -n scripts/*.sh .claude/hooks/*.sh .claude/statusline-quota-cache.sh && bash scripts/verify-claude-loop-workflow.sh",
+    "test": "bash scripts/test-fake-quota-flow.sh"
+  },
   "bin": {
-    "claude-quota-workflow": "bin/cli.js"
+    "cc-session-recover": "bin/cli.js"
   },
   "files": [
     "bin",
@@ -15,7 +19,9 @@
     ".claude/hooks",
     "docs",
     "scripts",
-    "HANDOFF.md"
+    "HANDOFF.md",
+    "CHANGELOG.md",
+    "SECURITY.md"
   ],
   "engines": {
     "node": ">=16"
@@ -30,5 +36,13 @@
     "workflow"
   ],
   "author": "Pradeep Singh",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/softcane/cc-session-recover.git"
+  },
+  "bugs": {
+    "url": "https://github.com/softcane/cc-session-recover/issues"
+  },
+  "homepage": "https://github.com/softcane/cc-session-recover#readme"
 }
