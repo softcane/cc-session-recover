@@ -19,17 +19,24 @@ const FILES = [
   '.claude/statusline-quota-cache.sh',
   '.claude/hooks/log-stop-failure.sh',
   '.claude/hooks/inject-standing-instructions.sh',
-  'docs/claude-code-auto-resume.md',
-  'docs/verified-quota-resume-example.md',
-  'docs/simple-flow.md',
-  'docs/faq.md',
   'scripts/install-into-project.sh',
-  'scripts/verify-claude-loop-workflow.sh',
   'scripts/quota-watcher.sh',
   'scripts/test-fake-quota-flow.sh',
 ];
 
 const COPY_IF_MISSING = ['HANDOFF.md'];
+
+// HANDOFF.md must stay editable by unattended Claude runs, so it cannot live
+// in .claude/ (Claude Code blocks edits there). Ignoring it in git gives the
+// same "never committed" result without breaking recovery.
+const IGNORE_ENTRIES = [
+  'HANDOFF.md',
+  '.claude/settings.local.json',
+  '.claude/rate-limit-state.json',
+  '.claude/stop-failure-events.jsonl',
+  '.claude/quota-blocked.json',
+];
+const IGNORE_HEADER = '# Claude Code session-recovery runtime state';
 
 function usage() {
   console.error('Usage: cc-session-recover init [--enable-local-hook] [target-dir]');
@@ -69,6 +76,16 @@ function main() {
     if (!fs.existsSync(dest)) {
       fs.copyFileSync(path.join(TEMPLATE_ROOT, rel), dest);
     }
+  }
+
+  const giPath = path.join(target, '.gitignore');
+  const existing = fs.existsSync(giPath) ? fs.readFileSync(giPath, 'utf8') : '';
+  const lines = existing.split(/\r?\n/);
+  const missing = IGNORE_ENTRIES.filter((e) => !lines.includes(e));
+  if (missing.length) {
+    const lead = existing && !existing.endsWith('\n') ? '\n' : '';
+    const header = lines.includes(IGNORE_HEADER) ? '' : `${IGNORE_HEADER}\n`;
+    fs.appendFileSync(giPath, `${lead}${header}${missing.join('\n')}\n`);
   }
 
   if (enableHook) {

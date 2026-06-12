@@ -70,7 +70,6 @@ require_text "docs/verified-quota-resume-example.md" "/loop 1m"
 require_text "README.md" "install-into-project.sh"
 require_text "README.md" "npx cc-session-recover init"
 require_text "README.md" "not bypass quota"
-require_text "README.md" "test-fake-quota-flow.sh"
 
 require_text ".claude/settings.example.json" "SessionStart"
 require_text ".claude/settings.example.json" "inject-standing-instructions.sh"

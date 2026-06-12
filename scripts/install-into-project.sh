@@ -26,7 +26,7 @@ TEMPLATE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
   exit 1
 }
 
-mkdir -p "$TARGET/.claude/hooks" "$TARGET/docs" "$TARGET/scripts"
+mkdir -p "$TARGET/.claude/hooks" "$TARGET/scripts"
 
 cp "$TEMPLATE_ROOT/.claude/loop.md" "$TARGET/.claude/loop.md"
 cp "$TEMPLATE_ROOT/.claude/auto-continue.md" "$TARGET/.claude/auto-continue.md"
@@ -35,10 +35,7 @@ cp "$TEMPLATE_ROOT/.claude/statusline-quota-cache.sh" "$TARGET/.claude/statuslin
 cp "$TEMPLATE_ROOT/.claude/hooks/inject-standing-instructions.sh" "$TARGET/.claude/hooks/inject-standing-instructions.sh"
 cp "$TEMPLATE_ROOT/.claude/settings.example.json" "$TARGET/.claude/settings.example.json"
 cp "$TEMPLATE_ROOT/.claude/hooks/log-stop-failure.sh" "$TARGET/.claude/hooks/log-stop-failure.sh"
-cp "$TEMPLATE_ROOT/docs/claude-code-auto-resume.md" "$TARGET/docs/claude-code-auto-resume.md"
-cp "$TEMPLATE_ROOT/docs/verified-quota-resume-example.md" "$TARGET/docs/verified-quota-resume-example.md"
 cp "$TEMPLATE_ROOT/scripts/install-into-project.sh" "$TARGET/scripts/install-into-project.sh"
-cp "$TEMPLATE_ROOT/scripts/verify-claude-loop-workflow.sh" "$TARGET/scripts/verify-claude-loop-workflow.sh"
 cp "$TEMPLATE_ROOT/scripts/quota-watcher.sh" "$TARGET/scripts/quota-watcher.sh"
 cp "$TEMPLATE_ROOT/scripts/test-fake-quota-flow.sh" "$TARGET/scripts/test-fake-quota-flow.sh"
 
@@ -51,8 +48,35 @@ chmod +x "$TARGET/.claude/hooks/inject-standing-instructions.sh"
 chmod +x "$TARGET/.claude/statusline-quota-cache.sh"
 chmod +x "$TARGET/scripts/test-fake-quota-flow.sh"
 chmod +x "$TARGET/scripts/install-into-project.sh"
-chmod +x "$TARGET/scripts/verify-claude-loop-workflow.sh"
 chmod +x "$TARGET/scripts/quota-watcher.sh"
+
+# Keep runtime state out of the target's git history. HANDOFF.md must stay in
+# the project root (Claude Code blocks unattended edits inside .claude/), so
+# ignoring it is how it stays uncommitted.
+GITIGNORE="$TARGET/.gitignore"
+GITIGNORE_HEADER='# Claude Code session-recovery runtime state'
+NEEDS_HEADER=1
+APPENDED_GITIGNORE=0
+touch "$GITIGNORE"
+if grep -qxF "$GITIGNORE_HEADER" "$GITIGNORE"; then
+  NEEDS_HEADER=0
+fi
+append_gitignore_line() {
+  if [ "$APPENDED_GITIGNORE" -eq 0 ] && [ -s "$GITIGNORE" ] && [ "$(tail -c 1 "$GITIGNORE")" != "" ]; then
+    printf '\n' >> "$GITIGNORE"
+  fi
+  APPENDED_GITIGNORE=1
+  printf '%s\n' "$1" >> "$GITIGNORE"
+}
+for entry in HANDOFF.md .claude/settings.local.json .claude/rate-limit-state.json .claude/stop-failure-events.jsonl .claude/quota-blocked.json; do
+  if ! grep -qxF "$entry" "$GITIGNORE"; then
+    if [ "$NEEDS_HEADER" -eq 1 ]; then
+      append_gitignore_line "$GITIGNORE_HEADER"
+      NEEDS_HEADER=0
+    fi
+    append_gitignore_line "$entry"
+  fi
+done
 
 if [ "$ENABLE_LOCAL_HOOK" -eq 1 ]; then
   if [ -f "$TARGET/.claude/settings.local.json" ]; then

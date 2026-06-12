@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 — 2026-06-12
+
+- Stop installing the package docs into target projects.
+- Keep runtime files out of target git history by appending the session-recovery ignore block.
+- Remove the fake-quota try-it flow from the README.
+
 ## 0.1.0 — 2026-06-12
 
 Initial release of the quota-resume template.

@@ -27,14 +27,6 @@ Give Claude your task, normally. Nothing extra to type — the injected standing
 
 If quota dies mid-task, work resumes automatically after the reset.
 
-## Try It Without Using Real Quota
-
-```sh
-bash scripts/test-fake-quota-flow.sh
-```
-
-This proves the whole chain in a throwaway repo in under a minute: it fakes a quota stop, fakes the reset, and shows the recovery happen.
-
 ## Limits
 
 - It does not bypass quota. It only waits for the reset.
