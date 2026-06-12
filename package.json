@@ -1,6 +1,6 @@
 {
   "name": "cc-session-recover",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Quota-resume workflow for Claude Code: handoff notebook, heartbeat auto-continue, StopFailure hooks, and an unattended watcher that resumes after quota resets.",
   "scripts": {
     "check": "node --check bin/cli.js && bash -n scripts/*.sh .claude/hooks/*.sh .claude/statusline-quota-cache.sh && bash scripts/verify-claude-loop-workflow.sh",
