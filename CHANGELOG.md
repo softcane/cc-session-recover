@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4 — 2026-06-12
+
+- Expand standing quota-recovery instructions to cover long analysis, research, document, and automated workflow tasks, not only coding tasks.
+
 ## 0.1.3 — 2026-06-12
 
 - Install only the runtime `.claude` files and `HANDOFF.md` into target projects; package tooling now stays in the npm package.
