@@ -1,0 +1,34 @@
+{
+  "name": "claude-quota-workflow",
+  "version": "0.1.0",
+  "description": "Quota-resume workflow for Claude Code: handoff notebook, heartbeat auto-continue, StopFailure hooks, and an unattended watcher that resumes after quota resets.",
+  "bin": {
+    "claude-quota-workflow": "bin/cli.js"
+  },
+  "files": [
+    "bin",
+    ".claude/loop.md",
+    ".claude/auto-continue.md",
+    ".claude/standing-instructions.md",
+    ".claude/settings.example.json",
+    ".claude/statusline-quota-cache.sh",
+    ".claude/hooks",
+    "docs",
+    "scripts",
+    "HANDOFF.md"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "quota",
+    "rate-limit",
+    "resume",
+    "hooks",
+    "workflow"
+  ],
+  "author": "Pradeep Singh",
+  "license": "MIT"
+}

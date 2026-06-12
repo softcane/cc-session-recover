@@ -4,3 +4,4 @@
 .claude/stop-failure-events.jsonl
 .claude/quota-blocked.json
 .claude/scheduled_tasks.json
+.claude/scheduled_tasks.lock

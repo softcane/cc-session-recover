@@ -27,7 +27,14 @@ With the heartbeat armed at task start, work continues after a quota reset witho
 
 ## Install Into Any Project
 
-From this template folder:
+With npm (no cloning needed):
+
+```sh
+npx claude-quota-workflow init /path/to/project
+npx claude-quota-workflow init --enable-local-hook /path/to/project
+```
+
+Or from a clone of this template folder:
 
 ```sh
 cd /path/to/claude-code-workflow
