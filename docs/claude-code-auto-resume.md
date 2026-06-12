@@ -2,10 +2,9 @@
 
 This workflow helps Claude Code continue after a quota or rate limit pause without a new prompt from you.
 
-The main mechanism is a fresh handoff file plus a recurring in-session heartbeat armed at task start.
-A one-time scheduled resume after the reset time still works when you know the reset time.
-Neither bypasses quota.
-They only wait until quota should be available again.
+The mechanism is a fresh handoff file plus a recurring in-session heartbeat armed at task start.
+It does not bypass quota.
+It only waits until quota should be available again.
 
 ## Automatic Injection Through Hooks
 
@@ -58,88 +57,25 @@ cd /path/to/cc-session-recover
 bash scripts/install-into-project.sh /path/to/project
 ```
 
-To also install the optional local quota logger hook:
+Hooks are enabled by default; pass `--no-hooks` to install the files without activating anything.
+Claude Code asks you to approve the hooks once on the next start either way.
 
-```sh
-bash scripts/install-into-project.sh --enable-local-hook /path/to/project
-```
-
-The hook is a logger plus a marker writer.
+The quota-stop hook is a logger plus a marker writer.
 It cannot schedule the same-session resume by itself.
 The marker feeds the optional unattended watcher described below.
 
-## What It Does
-
-The one-time resume prompt in `.claude/loop.md` tells Claude Code to:
-
-- Read `HANDOFF.md`.
-- Check the current git state.
-- Do one small safe step.
-- Run the narrowest useful check.
-- Update the handoff.
-- Stop.
+## The Handoff File
 
 The handoff is the recovery file for the current task.
 It should stay fresh while Claude works.
 Do not wait until the quota is almost gone.
 Claude may not always know that a quota stop is about to happen.
 
-The heartbeat prompt in `.claude/auto-continue.md` is different.
-It keeps working through the remaining checklist until the task is complete or blocked, because a one-step-per-fire prompt would never finish a real task.
+The heartbeat prompt in `.claude/auto-continue.md` keeps working through the remaining checklist until the task is complete or blocked, because a one-step-per-fire prompt would never finish a real task.
 
-## One-Time Resume Flow
-
-1. Run `claude` in the repo.
-2. Give Claude the main coding task.
-3. Make sure Claude keeps `HANDOFF.md` updated.
-4. Look at the reset time in your Claude Code status line.
-5. Add a 10 to 15 minute buffer.
-6. Ask Claude Code to schedule one resume at that time.
-
-The terminal must stay open.
-The Claude Code session must be idle when the scheduled resume fires.
-
-Example:
-
-```text
-Update HANDOFF.md now.
-
-Then set a one-time reminder for 02:25 local time with this prompt:
-
-Read HANDOFF.md first. If the task is incomplete, run git status --short, inspect the current diff only enough to understand the working tree, continue exactly one small safe step from Next Exact Action, run the narrowest relevant check, update HANDOFF.md, and stop.
-```
-
-Use a time like `02:25`, not exactly `02:00` or `02:30`.
-Claude Code may add a small timing offset to one-shot tasks at the top or bottom of the hour.
-
-## What Happens During Quota Or Rate Limit
-
-If quota or rate limit blocks a turn, Claude Code cannot keep working at that moment.
-The scheduled resume does not bypass quota.
-
-After quota resets, the scheduled resume prompt runs.
-Claude reads `HANDOFF.md`, checks the repo state, does one small safe step, updates the handoff, and stops.
-
-This avoids sending a prompt every minute while quota is still blocked.
-
-## When To Use `/loop`
-
-Use `/loop` for short polling tasks.
-For example, use it to check whether CI passed or whether a deployment finished.
-
-Do not use `/loop 1m` for overnight quota recovery.
-That can add repeated failed attempts to the session.
-
-If you do not know the reset time, use a slow loop such as `/loop 1h`, not a one-minute loop.
-
-## How To Stop The Loop
-
-Press Esc while the loop is waiting.
-
-If that does not stop it, use the normal Claude Code stop control in the same terminal.
-
-One-time scheduled reminders are different.
-Ask Claude Code to list or cancel scheduled tasks if you need to remove one.
+Do not use `/loop 1m` or any one-minute schedule for quota recovery.
+That adds many failed attempts to the session for no benefit.
+To stop the heartbeat, ask Claude to list and cancel its scheduled tasks.
 
 ## Hooks And Status Line
 
@@ -165,6 +101,12 @@ It also writes raw hook input to `.claude/stop-failure-events.jsonl` and a marke
 
 The heartbeat needs the terminal open.
 If the terminal might close, run the watcher from another shell:
+
+```sh
+npx cc-session-recover watch /path/to/project
+```
+
+Or from a clone of this repo:
 
 ```sh
 bash scripts/quota-watcher.sh /path/to/project

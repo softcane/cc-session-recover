@@ -5,23 +5,24 @@
 // Pure Node so it also works where bash is absent; the installed runtime
 // scripts themselves are bash and need a POSIX shell (macOS, Linux, WSL,
 // Git Bash).
+//
+// Only files Claude Code must execute from inside the project are installed
+// (the .claude prompts, hooks, and status line wrapper). Tooling like the
+// watcher stays in this package and runs via `npx cc-session-recover watch`.
 
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 
 const TEMPLATE_ROOT = path.join(__dirname, '..');
 
 const FILES = [
-  '.claude/loop.md',
   '.claude/auto-continue.md',
   '.claude/standing-instructions.md',
   '.claude/settings.example.json',
   '.claude/statusline-quota-cache.sh',
   '.claude/hooks/log-stop-failure.sh',
   '.claude/hooks/inject-standing-instructions.sh',
-  'scripts/install-into-project.sh',
-  'scripts/quota-watcher.sh',
-  'scripts/test-fake-quota-flow.sh',
 ];
 
 const COPY_IF_MISSING = ['HANDOFF.md'];
@@ -39,18 +40,31 @@ const IGNORE_ENTRIES = [
 const IGNORE_HEADER = '# Claude Code session-recovery runtime state';
 
 function usage() {
-  console.error('Usage: cc-session-recover init [--enable-local-hook] [target-dir]');
+  console.error('Usage: cc-session-recover init [--no-hooks] [target-dir]');
+  console.error('       cc-session-recover watch [target-dir]');
+  console.error('Hooks are enabled by default; Claude Code still asks you to approve them once.');
   process.exit(2);
+}
+
+function watch(target) {
+  const script = path.join(TEMPLATE_ROOT, 'scripts', 'quota-watcher.sh');
+  const child = spawn('bash', [script, target], { stdio: 'inherit' });
+  child.on('exit', (code) => process.exit(code === null ? 1 : code));
+  child.on('error', (err) => {
+    console.error(`Could not start watcher: ${err.message}`);
+    process.exit(1);
+  });
 }
 
 function main() {
   const args = process.argv.slice(2);
-  if (args[0] !== 'init') usage();
+  if (args[0] !== 'init' && args[0] !== 'watch') usage();
 
-  let enableHook = false;
+  let enableHook = true;
   let target = '.';
   for (const arg of args.slice(1)) {
-    if (arg === '--enable-local-hook') enableHook = true;
+    if (arg === '--no-hooks') enableHook = false;
+    else if (arg === '--enable-local-hook') enableHook = true; // legacy no-op, was the old default-off flag
     else if (arg.startsWith('-')) usage();
     else target = arg;
   }
@@ -59,6 +73,11 @@ function main() {
   if (!fs.existsSync(target) || !fs.statSync(target).isDirectory()) {
     console.error(`Target directory does not exist: ${target}`);
     process.exit(1);
+  }
+
+  if (args[0] === 'watch') {
+    watch(target);
+    return;
   }
 
   for (const rel of FILES) {

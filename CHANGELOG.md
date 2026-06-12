@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3 — 2026-06-12
+
+- Install only the runtime `.claude` files and `HANDOFF.md` into target projects; package tooling now stays in the npm package.
+- Enable hooks by default, with `--no-hooks` as the opt-out flag.
+- Add `cc-session-recover watch` for running the closed-terminal watcher through `npx`.
+- Remove the old one-time reminder flow and its `loop.md` prompt from the packaged workflow.
+
 ## 0.1.2 — 2026-06-12
 
 - Stop installing the package docs into target projects.

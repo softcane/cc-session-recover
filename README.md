@@ -9,10 +9,10 @@ Every part of this has been verified against a genuine quota stop, end to end.
 ## Install
 
 ```sh
-npx cc-session-recover init --enable-local-hook /path/to/project
+npx cc-session-recover init /path/to/project
 ```
 
-(Or from a clone: `bash scripts/install-into-project.sh --enable-local-hook /path/to/project`.)
+(Or from a clone: `bash scripts/install-into-project.sh /path/to/project`. Pass `--no-hooks` with either to install the files without activating anything.)
 
 Approve the hooks once when Claude Code asks on the next start. That's the whole setup.
 
@@ -27,15 +27,21 @@ Give Claude your task, normally. Nothing extra to type — the injected standing
 
 If quota dies mid-task, work resumes automatically after the reset.
 
+## Why This Approach Is Stronger
+
+- It avoids `tmux`, `screen`, and terminal-injection hacks. Headless `claude -p --resume` is used only by the optional closed-terminal watcher, targeting the exact recorded session.
+- It gives you two recovery paths. With the terminal open, the heartbeat resumes inside the active Claude Code session. With the terminal closed, the watcher resumes the saved session id.
+- `HANDOFF.md` keeps the next step in the repo, with project state, recent progress, and the exact next action.
+- The heartbeat runs inside the active Claude Code session, so the original context stays alive while quota is blocked.
+
 ## Limits
 
 - It does not bypass quota. It only waits for the reset.
 - The basic flow needs the terminal to stay open. A closed-terminal recovery mode exists; see the docs.
-- Worst case is never lost work: the recovery note is always on disk, and "Read HANDOFF.md and continue" restores any session by hand. A one-time reminder at the reset time is also supported; see the docs.
+- Worst case is never lost work: the recovery note is always on disk, and "Read HANDOFF.md and continue" restores any session by hand.
 
 ## Docs
 
 - [Simple flow](docs/simple-flow.md) — how it works, told as a story (notebook, alarm, watchman).
 - [FAQ](docs/faq.md) — reliability, hook approval, what still needs a human.
-- [Full details](docs/claude-code-auto-resume.md) — closed-terminal watcher, precise reset-time resume, one-time reminders, all limits.
-- [Worked example](docs/verified-quota-resume-example.md) — a concrete one-time reminder example.
+- [Full details](docs/claude-code-auto-resume.md) — closed-terminal watcher, precise reset-time resume, all limits.

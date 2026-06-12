@@ -26,7 +26,7 @@ You never type anything. The one rule: the terminal must stay open, because the 
 If the terminal cannot stay open, run the watchman in a second terminal:
 
 ```sh
-bash scripts/quota-watcher.sh /path/to/project
+npx cc-session-recover watch /path/to/project
 ```
 
 When quota cuts Claude off, a hook drops a marker file with the session id.

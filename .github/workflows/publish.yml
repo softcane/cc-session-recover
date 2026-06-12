@@ -58,9 +58,9 @@ jobs:
           target_dir="$(mktemp -d)"
           npm pack --pack-destination "$pack_dir"
           tarball="$(find "$pack_dir" -name 'cc-session-recover-*.tgz' -print -quit)"
-          npx -y --package "$tarball" cc-session-recover init --enable-local-hook "$target_dir"
+          npx -y --package "$tarball" cc-session-recover init "$target_dir"
           test -f "$target_dir/.claude/settings.local.json"
-          test -x "$target_dir/scripts/quota-watcher.sh"
+          test ! -d "$target_dir/scripts"
 
       - name: Publish to npm
         run: npm publish --access public --ignore-scripts

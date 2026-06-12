@@ -3,15 +3,16 @@
 set -eu
 
 usage() {
-  printf 'Usage: %s [--enable-local-hook] /path/to/project\n' "$0" >&2
+  printf 'Usage: %s [--no-hooks] /path/to/project\n' "$0" >&2
+  printf 'Hooks are enabled by default; Claude Code still asks you to approve them once.\n' >&2
 }
 
-ENABLE_LOCAL_HOOK=0
+ENABLE_LOCAL_HOOK=1
 
-if [ "${1:-}" = "--enable-local-hook" ]; then
-  ENABLE_LOCAL_HOOK=1
-  shift
-fi
+case "${1:-}" in
+  --no-hooks) ENABLE_LOCAL_HOOK=0; shift ;;
+  --enable-local-hook) shift ;; # legacy no-op, was the old default-off flag
+esac
 
 if [ "$#" -ne 1 ]; then
   usage
@@ -26,19 +27,14 @@ TEMPLATE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
   exit 1
 }
 
-mkdir -p "$TARGET/.claude/hooks" "$TARGET/scripts"
+mkdir -p "$TARGET/.claude/hooks"
 
-cp "$TEMPLATE_ROOT/.claude/loop.md" "$TARGET/.claude/loop.md"
 cp "$TEMPLATE_ROOT/.claude/auto-continue.md" "$TARGET/.claude/auto-continue.md"
 cp "$TEMPLATE_ROOT/.claude/standing-instructions.md" "$TARGET/.claude/standing-instructions.md"
 cp "$TEMPLATE_ROOT/.claude/statusline-quota-cache.sh" "$TARGET/.claude/statusline-quota-cache.sh"
 cp "$TEMPLATE_ROOT/.claude/hooks/inject-standing-instructions.sh" "$TARGET/.claude/hooks/inject-standing-instructions.sh"
 cp "$TEMPLATE_ROOT/.claude/settings.example.json" "$TARGET/.claude/settings.example.json"
 cp "$TEMPLATE_ROOT/.claude/hooks/log-stop-failure.sh" "$TARGET/.claude/hooks/log-stop-failure.sh"
-cp "$TEMPLATE_ROOT/scripts/install-into-project.sh" "$TARGET/scripts/install-into-project.sh"
-cp "$TEMPLATE_ROOT/scripts/quota-watcher.sh" "$TARGET/scripts/quota-watcher.sh"
-cp "$TEMPLATE_ROOT/scripts/test-fake-quota-flow.sh" "$TARGET/scripts/test-fake-quota-flow.sh"
-
 if [ ! -f "$TARGET/HANDOFF.md" ]; then
   cp "$TEMPLATE_ROOT/HANDOFF.md" "$TARGET/HANDOFF.md"
 fi
@@ -46,9 +42,6 @@ fi
 chmod +x "$TARGET/.claude/hooks/log-stop-failure.sh"
 chmod +x "$TARGET/.claude/hooks/inject-standing-instructions.sh"
 chmod +x "$TARGET/.claude/statusline-quota-cache.sh"
-chmod +x "$TARGET/scripts/test-fake-quota-flow.sh"
-chmod +x "$TARGET/scripts/install-into-project.sh"
-chmod +x "$TARGET/scripts/quota-watcher.sh"
 
 # Keep runtime state out of the target's git history. HANDOFF.md must stay in
 # the project root (Claude Code blocks unattended edits inside .claude/), so

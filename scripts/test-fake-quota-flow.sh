@@ -42,6 +42,8 @@ mkdir -p "$DUMMY"
 git -C "$DUMMY" init -q
 bash "$TEMPLATE_ROOT/scripts/install-into-project.sh" --enable-local-hook "$DUMMY" >/dev/null
 [ -f "$DUMMY/.claude/settings.local.json" ] || fail "hook settings not installed"
+[ ! -d "$DUMMY/scripts" ] || fail "install must not create a scripts folder in the target"
+[ ! -d "$DUMMY/docs" ] || fail "install must not create a docs folder in the target"
 
 step "Fake SessionStart: standing instructions should be injected"
 INJECTED=$(printf '{"session_id":"fake-session-123","hook_event_name":"SessionStart","source":"startup"}' \
@@ -89,7 +91,7 @@ chmod +x "$BIN/claude"
 
 step "Run the watcher against the fake CLI"
 QUOTA_WATCH_INTERVAL=1 QUOTA_RESUME_BUFFER=1 PATH="$BIN:$PATH" \
-  bash "$DUMMY/scripts/quota-watcher.sh" "$DUMMY" >"$WORK/watcher.log" 2>&1 &
+  bash "$TEMPLATE_ROOT/scripts/quota-watcher.sh" "$DUMMY" >"$WORK/watcher.log" 2>&1 &
 WATCHER_PID=$!
 disown "$WATCHER_PID" 2>/dev/null || true
 
