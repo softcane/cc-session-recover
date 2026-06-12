@@ -1,0 +1,66 @@
+name: Publish
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to npm
+    if: github.repository == 'softcane/cc-session-recover'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Check release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          if [[ "${GITHUB_REF_NAME}" != "v${version}" ]]; then
+            echo "::error::Release tag ${GITHUB_REF_NAME} does not match package version v${version}"
+            exit 1
+          fi
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate
+
+      - name: Run release gate
+        run: npm run prepublishOnly
+
+      - name: Smoke packaged CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          pack_dir="$(mktemp -d)"
+          target_dir="$(mktemp -d)"
+          npm pack --pack-destination "$pack_dir"
+          tarball="$(find "$pack_dir" -name 'cc-session-recover-*.tgz' -print -quit)"
+          npx -y --package "$tarball" cc-session-recover init --enable-local-hook "$target_dir"
+          test -f "$target_dir/.claude/settings.local.json"
+          test -x "$target_dir/scripts/quota-watcher.sh"
+
+      - name: Publish to npm
+        run: npm publish --access public --ignore-scripts
