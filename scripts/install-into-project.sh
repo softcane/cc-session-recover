@@ -27,12 +27,75 @@ TEMPLATE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
   exit 1
 }
 
+merge_hook_settings() {
+  local local_settings=$1
+  local template_settings=$2
+  local tmp
+
+  if [ ! -f "$local_settings" ]; then
+    cp "$template_settings" "$local_settings"
+    return
+  fi
+
+  if ! command -v jq >/dev/null 2>&1; then
+    printf 'Cannot merge hooks into existing .claude/settings.local.json because jq is not on PATH.\n' >&2
+    printf 'Install jq, then rerun this installer.\n' >&2
+    exit 1
+  fi
+
+  tmp=$(mktemp "${local_settings}.tmp.XXXXXX")
+  if jq -s '
+    def recovery_scripts: [
+      "inject-standing-instructions.sh",
+      "remind-on-prompt.sh",
+      "log-stop-failure.sh"
+    ];
+    def as_array: if type == "array" then . else [] end;
+    def as_object: if type == "object" then . else {} end;
+    def recovery_hook_scripts:
+      [(.hooks // [])[]? |
+        select(.type == "command" and (.command | type == "string")) |
+        .command as $command |
+        recovery_scripts[] |
+        select($command | contains(.))
+      ];
+    def same_recovery_hook($existing; $incoming):
+      (recovery_hook_scripts as $existing_scripts |
+        ($incoming | recovery_hook_scripts) as $incoming_scripts |
+        (($incoming_scripts | length) > 0) and
+        any($incoming_scripts[]; . as $script | any($existing_scripts[]; . == $script))
+      );
+    def add_missing($incoming):
+      as_array as $existing |
+      reduce (($incoming // []) | as_array)[] as $item ($existing;
+        if any(.[]; (. == $item) or same_recovery_hook(.; $item)) then . else . + [$item] end
+      );
+    def merge_hooks($incoming):
+      as_object as $base |
+      reduce (($incoming // {}) | as_object | keys_unsorted[]) as $event ($base;
+        .[$event] = (.[$event] | add_missing($incoming[$event]))
+      );
+
+    .[0] as $local |
+    .[1] as $template |
+    $local + {hooks: (($local.hooks // {}) | merge_hooks($template.hooks // {}))}
+  ' "$local_settings" "$template_settings" > "$tmp"; then
+    mv "$tmp" "$local_settings"
+    printf 'Merged hook settings into existing .claude/settings.local.json.\n' >&2
+  else
+    rm -f "$tmp"
+    printf 'Could not merge hooks into .claude/settings.local.json.\n' >&2
+    exit 1
+  fi
+}
+
 mkdir -p "$TARGET/.claude/hooks"
 
 cp "$TEMPLATE_ROOT/.claude/auto-continue.md" "$TARGET/.claude/auto-continue.md"
 cp "$TEMPLATE_ROOT/.claude/standing-instructions.md" "$TARGET/.claude/standing-instructions.md"
 cp "$TEMPLATE_ROOT/.claude/statusline-quota-cache.sh" "$TARGET/.claude/statusline-quota-cache.sh"
 cp "$TEMPLATE_ROOT/.claude/hooks/inject-standing-instructions.sh" "$TARGET/.claude/hooks/inject-standing-instructions.sh"
+cp "$TEMPLATE_ROOT/.claude/hooks/remind-on-prompt.sh" "$TARGET/.claude/hooks/remind-on-prompt.sh"
 cp "$TEMPLATE_ROOT/.claude/settings.example.json" "$TARGET/.claude/settings.example.json"
 cp "$TEMPLATE_ROOT/.claude/hooks/log-stop-failure.sh" "$TARGET/.claude/hooks/log-stop-failure.sh"
 if [ ! -f "$TARGET/HANDOFF.md" ]; then
@@ -41,6 +104,7 @@ fi
 
 chmod +x "$TARGET/.claude/hooks/log-stop-failure.sh"
 chmod +x "$TARGET/.claude/hooks/inject-standing-instructions.sh"
+chmod +x "$TARGET/.claude/hooks/remind-on-prompt.sh"
 chmod +x "$TARGET/.claude/statusline-quota-cache.sh"
 
 # Keep runtime state out of the target's git history. HANDOFF.md must stay in
@@ -72,12 +136,7 @@ for entry in HANDOFF.md .claude/settings.local.json .claude/rate-limit-state.jso
 done
 
 if [ "$ENABLE_LOCAL_HOOK" -eq 1 ]; then
-  if [ -f "$TARGET/.claude/settings.local.json" ]; then
-    printf 'Skipped hook enablement because .claude/settings.local.json already exists.\n' >&2
-    printf 'Merge .claude/settings.example.json into it manually if wanted.\n' >&2
-  else
-    cp "$TEMPLATE_ROOT/.claude/settings.example.json" "$TARGET/.claude/settings.local.json"
-  fi
+  merge_hook_settings "$TARGET/.claude/settings.local.json" "$TEMPLATE_ROOT/.claude/settings.example.json"
 fi
 
 printf 'Installed Claude Code workflow into %s\n' "$TARGET"

@@ -44,6 +44,67 @@ bash "$TEMPLATE_ROOT/scripts/install-into-project.sh" --enable-local-hook "$DUMM
 [ -f "$DUMMY/.claude/settings.local.json" ] || fail "hook settings not installed"
 [ ! -d "$DUMMY/scripts" ] || fail "install must not create a scripts folder in the target"
 [ ! -d "$DUMMY/docs" ] || fail "install must not create a docs folder in the target"
+jq -e '.hooks.SessionStart and .hooks.UserPromptSubmit and .hooks.StopFailure' "$DUMMY/.claude/settings.local.json" >/dev/null \
+  || fail "installed local settings missing recovery hooks"
+printf 'ok: installer activated recovery hooks in local settings\n'
+
+step "Existing settings.local should keep settings and receive hooks"
+MERGE_DUMMY="$WORK/merge-repo"
+mkdir -p "$MERGE_DUMMY/.claude"
+printf '{"permissions":{"allow":["Bash(npm test *)"]},"hooks":{"PostToolUse":[{"matcher":"Write","hooks":[{"type":"command","command":"true"}]}]}}\n' \
+  > "$MERGE_DUMMY/.claude/settings.local.json"
+bash "$TEMPLATE_ROOT/scripts/install-into-project.sh" "$MERGE_DUMMY" >/dev/null
+jq -e '
+  (.permissions.allow[0] == "Bash(npm test *)") and
+  (.hooks.PostToolUse[0].matcher == "Write") and
+  (.hooks.SessionStart | length > 0) and
+  (.hooks.UserPromptSubmit | length > 0) and
+  (.hooks.StopFailure | length > 0)
+' "$MERGE_DUMMY/.claude/settings.local.json" >/dev/null || fail "bash installer did not merge hooks into existing settings"
+bash "$TEMPLATE_ROOT/scripts/install-into-project.sh" "$MERGE_DUMMY" >/dev/null
+DUPES=$(jq '[.hooks.SessionStart[], .hooks.UserPromptSubmit[], .hooks.StopFailure[]] | length' "$MERGE_DUMMY/.claude/settings.local.json")
+[ "$DUPES" -eq 3 ] || fail "bash installer duplicated recovery hooks on rerun"
+printf 'ok: bash installer preserved existing settings and merged hooks once\n'
+
+step "Older shell-form recovery hooks should not be duplicated"
+OLD_DUMMY="$WORK/old-hook-repo"
+mkdir -p "$OLD_DUMMY/.claude"
+jq -n '{
+  hooks: {
+    SessionStart: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command: "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/inject-standing-instructions.sh"
+          }
+        ]
+      }
+    ]
+  }
+}' > "$OLD_DUMMY/.claude/settings.local.json"
+bash "$TEMPLATE_ROOT/scripts/install-into-project.sh" "$OLD_DUMMY" >/dev/null
+SESSION_START_COUNT=$(jq '.hooks.SessionStart | length' "$OLD_DUMMY/.claude/settings.local.json")
+[ "$SESSION_START_COUNT" -eq 1 ] || fail "installer duplicated old SessionStart recovery hook"
+jq -e '(.hooks.UserPromptSubmit | length > 0) and (.hooks.StopFailure | length > 0)' \
+  "$OLD_DUMMY/.claude/settings.local.json" >/dev/null || fail "installer failed to add missing hooks next to old hook"
+printf 'ok: installer recognized old recovery hook commands and added only missing hooks\n'
+
+step "Node installer should also merge existing settings.local"
+NODE_DUMMY="$WORK/node-merge-repo"
+mkdir -p "$NODE_DUMMY/.claude"
+printf '{"permissions":{"allow":["Bash(npm test *)"]}}\n' > "$NODE_DUMMY/.claude/settings.local.json"
+node "$TEMPLATE_ROOT/bin/cli.js" init "$NODE_DUMMY" >/dev/null
+jq -e '
+  (.permissions.allow[0] == "Bash(npm test *)") and
+  (.hooks.SessionStart | length > 0) and
+  (.hooks.UserPromptSubmit | length > 0) and
+  (.hooks.StopFailure | length > 0)
+' "$NODE_DUMMY/.claude/settings.local.json" >/dev/null || fail "node installer did not merge hooks into existing settings"
+node "$TEMPLATE_ROOT/bin/cli.js" init "$NODE_DUMMY" >/dev/null
+DUPES=$(jq '[.hooks.SessionStart[], .hooks.UserPromptSubmit[], .hooks.StopFailure[]] | length' "$NODE_DUMMY/.claude/settings.local.json")
+[ "$DUPES" -eq 3 ] || fail "node installer duplicated recovery hooks on rerun"
+printf 'ok: node installer preserved existing settings and merged hooks once\n'
 
 step "Fake SessionStart: standing instructions should be injected"
 INJECTED=$(printf '{"session_id":"fake-session-123","hook_event_name":"SessionStart","source":"startup"}' \
@@ -60,13 +121,15 @@ printf '{"workspace":{"project_dir":"%s"},"model":{"display_name":"Test"},"rate_
 printf 'ok: status line wrapper cached the reset time\n'
 
 step "Fake quota stop: StopFailure(rate_limit) should log and write the marker"
-printf '{"session_id":"fake-session-123","hook_event_name":"StopFailure","error_type":"rate_limit"}' \
+printf '{"session_id":"fake-session-123","hook_event_name":"StopFailure","error":"rate_limit","last_assistant_message":"API Error: Rate limit reached"}' \
   | CLAUDE_PROJECT_DIR="$DUMMY" bash "$DUMMY/.claude/hooks/log-stop-failure.sh"
 [ -f "$DUMMY/.claude/stop-failure-events.jsonl" ] || fail "missing stop-failure log"
 [ -f "$DUMMY/.claude/quota-blocked.json" ] || fail "missing quota-blocked marker"
 grep -Fq "hit a rate limit" "$DUMMY/HANDOFF.md" || fail "missing handoff note"
 SESSION=$(jq -r '.hook_input.session_id // empty' "$DUMMY/.claude/quota-blocked.json")
 [ "$SESSION" = "fake-session-123" ] || fail "marker has wrong session_id: $SESSION"
+ERROR=$(jq -r '.hook_input.error // empty' "$DUMMY/.claude/quota-blocked.json")
+[ "$ERROR" = "rate_limit" ] || fail "marker has wrong error field: $ERROR"
 RESETS=$(jq -r '.rate_limit_state.five_hour_resets_at // empty' "$DUMMY/.claude/quota-blocked.json")
 [ -n "$RESETS" ] || fail "marker missing cached reset time"
 printf 'ok: hook wrote log, handoff note, and marker with session_id and reset time\n'

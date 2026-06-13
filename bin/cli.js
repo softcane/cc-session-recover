@@ -23,6 +23,7 @@ const FILES = [
   '.claude/statusline-quota-cache.sh',
   '.claude/hooks/log-stop-failure.sh',
   '.claude/hooks/inject-standing-instructions.sh',
+  '.claude/hooks/remind-on-prompt.sh',
 ];
 
 const COPY_IF_MISSING = ['HANDOFF.md'];
@@ -38,6 +39,66 @@ const IGNORE_ENTRIES = [
   '.claude/quota-blocked.json',
 ];
 const IGNORE_HEADER = '# Claude Code session-recovery runtime state';
+const RECOVERY_HOOK_SCRIPTS = [
+  'inject-standing-instructions.sh',
+  'remind-on-prompt.sh',
+  'log-stop-failure.sh',
+];
+
+function readJson(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (err) {
+    throw new Error(`Could not parse ${file}: ${err.message}`);
+  }
+}
+
+function addMissingHookGroups(existingGroups, incomingGroups) {
+  const merged = Array.isArray(existingGroups) ? existingGroups.slice() : [];
+  for (const group of incomingGroups || []) {
+    const encoded = JSON.stringify(group);
+    if (!merged.some((existing) => JSON.stringify(existing) === encoded || hasSameRecoveryHook(existing, group))) {
+      merged.push(group);
+    }
+  }
+  return merged;
+}
+
+function recoveryHookScripts(group) {
+  const handlers = Array.isArray(group && group.hooks) ? group.hooks : [];
+  const commands = handlers
+    .filter((handler) => handler && handler.type === 'command' && typeof handler.command === 'string')
+    .map((handler) => handler.command);
+  return RECOVERY_HOOK_SCRIPTS.filter((script) => commands.some((command) => command.includes(script)));
+}
+
+function hasSameRecoveryHook(existingGroup, incomingGroup) {
+  const incomingScripts = recoveryHookScripts(incomingGroup);
+  if (!incomingScripts.length) return false;
+
+  const existingScripts = recoveryHookScripts(existingGroup);
+  return incomingScripts.some((script) => existingScripts.includes(script));
+}
+
+function mergeHookSettings(localPath, templatePath) {
+  if (!fs.existsSync(localPath)) {
+    fs.copyFileSync(templatePath, localPath);
+    return 'created';
+  }
+
+  const localSettings = readJson(localPath);
+  const templateSettings = readJson(templatePath);
+  const incomingHooks = templateSettings.hooks || {};
+  const mergedHooks = { ...(localSettings.hooks || {}) };
+
+  for (const [event, groups] of Object.entries(incomingHooks)) {
+    mergedHooks[event] = addMissingHookGroups(mergedHooks[event], groups);
+  }
+
+  localSettings.hooks = mergedHooks;
+  fs.writeFileSync(localPath, `${JSON.stringify(localSettings, null, 2)}\n`);
+  return 'merged';
+}
 
 function usage() {
   console.error('Usage: cc-session-recover init [--no-hooks] [target-dir]');
@@ -109,11 +170,9 @@ function main() {
 
   if (enableHook) {
     const local = path.join(target, '.claude', 'settings.local.json');
-    if (fs.existsSync(local)) {
-      console.error('Skipped hook enablement: .claude/settings.local.json already exists.');
-      console.error('Merge .claude/settings.example.json into it manually if wanted.');
-    } else {
-      fs.copyFileSync(path.join(TEMPLATE_ROOT, '.claude', 'settings.example.json'), local);
+    const result = mergeHookSettings(local, path.join(TEMPLATE_ROOT, '.claude', 'settings.example.json'));
+    if (result === 'merged') {
+      console.error('Merged hook settings into existing .claude/settings.local.json.');
     }
   }
 

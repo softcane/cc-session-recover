@@ -100,8 +100,8 @@ The template includes:
 - `.claude/settings.example.json`
 - `.claude/hooks/log-stop-failure.sh`
 
-To enable hooks in one project, copy `.claude/settings.example.json` to `.claude/settings.local.json`.
-If `.claude/settings.local.json` already exists, merge the settings by hand.
+The installer enables these hooks in `.claude/settings.local.json`.
+If that file already exists, the installer preserves it and merges in the recovery hooks.
 
 When quota stops a turn, the hook appends a note to `HANDOFF.md`.
 It also writes raw hook input to `.claude/stop-failure-events.jsonl` and a marker to `.claude/quota-blocked.json`.
