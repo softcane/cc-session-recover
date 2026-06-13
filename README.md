@@ -42,6 +42,6 @@ If quota dies mid-task, work resumes automatically after the reset.
 
 ## Docs
 
-- [Simple flow](docs/simple-flow.md) — how it works, told as a story (notebook, alarm, watchman).
-- [FAQ](docs/faq.md) — reliability, hook approval, what still needs a human.
-- [Full details](docs/claude-code-auto-resume.md) — closed-terminal watcher, precise reset-time resume, all limits.
+- [Simple flow](https://github.com/softcane/cc-session-recover/blob/main/docs/simple-flow.md) — how it works, told as a story (notebook, alarm, watchman).
+- [FAQ](https://github.com/softcane/cc-session-recover/blob/main/docs/faq.md) — reliability, hook approval, what still needs a human.
+- [Full details](https://github.com/softcane/cc-session-recover/blob/main/docs/claude-code-auto-resume.md) — closed-terminal watcher, precise reset-time resume, all limits.

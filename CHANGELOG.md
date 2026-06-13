@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5 — 2026-06-13
+
+- Add a `UserPromptSubmit` recovery reminder hook so the schedule instruction is repeated next to every prompt, not just at session start (it was getting buried in long sessions).
+- Make the schedule rule unconditional and consistent across both injection points: always ensure one recurring auto-continue schedule exists, instead of leaving the model a "is this a long task?" judgment call that silently skipped audits and skill-driven runs. An explicit user instruction not to schedule still wins.
+- Preserve existing `.claude/settings.local.json` on install by merging the recovery hooks in, rather than skipping when the file exists.
+- Use the quoted `"$CLAUDE_PROJECT_DIR"` form in example hook commands (safe for paths with spaces).
+
 ## 0.1.4 — 2026-06-12
 
 - Expand standing quota-recovery instructions to cover long analysis, research, document, and automated workflow tasks, not only coding tasks.
