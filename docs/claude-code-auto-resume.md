@@ -153,7 +153,15 @@ The wrapper caches the fields and passes the display through unchanged.
 Before you rely on the watcher:
 
 - Exit the interactive Claude Code session, or two sessions may work on the same task.
-- Configure project permissions, or accept the default `--permission-mode acceptEdits`.
+- **Understand the default permission level.** The watcher resumes Claude with
+  `--permission-mode acceptEdits`, which lets Claude create and modify files in
+  your project without asking you first.  There is no human in the loop during
+  an unattended resume.  If that is not acceptable for your project, override it:
+
+  ```sh
+  QUOTA_WATCH_CLAUDE_ARGS="--permission-mode default" npx cc-session-recover watch /path/to/project
+  ```
+
 - Set `QUOTA_WATCH_INTERVAL` and `QUOTA_WATCH_CLAUDE_ARGS` if you need different retry timing or claude flags.
 
 ## Test Without Real Quota

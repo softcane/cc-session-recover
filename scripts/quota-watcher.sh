@@ -44,7 +44,15 @@ RESUME_BUFFER=${QUOTA_RESUME_BUFFER:-900}
 epoch_to_local() {
   date -r "$1" '+%H:%M %Z' 2>/dev/null || date -d "@$1" '+%H:%M %Z' 2>/dev/null || printf 'epoch %s' "$1"
 }
-CLAUDE_ARGS=${QUOTA_WATCH_CLAUDE_ARGS:---permission-mode acceptEdits}
+# WARNING: unattended mode runs `claude` with --permission-mode acceptEdits by
+# default, meaning Claude can create and modify files in the project without
+# human confirmation.  Override via QUOTA_WATCH_CLAUDE_ARGS if you want
+# stricter permissions (e.g. QUOTA_WATCH_CLAUDE_ARGS="--permission-mode default").
+# Use an array with globbing disabled so multi-word args split correctly and
+# glob characters in the value cannot expand against the filesystem.
+set -f
+CLAUDE_ARGS=(${QUOTA_WATCH_CLAUDE_ARGS:---permission-mode acceptEdits})
+set +f
 
 command -v jq >/dev/null 2>&1 || {
   printf 'quota-watcher needs jq.\n' >&2
@@ -84,7 +92,7 @@ while :; do
 
       printf 'Trying headless resume of session %s\n' "$SESSION_ID"
 
-      if (cd "$PROJECT_DIR" && claude -p --resume "$SESSION_ID" $CLAUDE_ARGS "$(cat "$PROMPT_FILE")"); then
+      if (cd "$PROJECT_DIR" && claude -p --resume "$SESSION_ID" "${CLAUDE_ARGS[@]}" "$(cat "$PROMPT_FILE")"); then
         printf 'Resume succeeded; clearing marker.\n'
         rm -f "$MARKER"
       else
