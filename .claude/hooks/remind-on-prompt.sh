@@ -1,31 +1,43 @@
 #!/usr/bin/env bash
 
 # UserPromptSubmit hook.
-# Injects a recovery order on the first N prompts of a session.
+# Injects a recovery order alongside each user prompt.
 #
-# Controlled by CC_REMIND_MODE (default: 1):
+# Default behaviour (CC_REMIND_MODE unset): inject on every prompt.
+# This preserves the original design — repeated injection ensures Claude sets
+# up the heartbeat schedule even after context rolls over in long sessions or
+# after an auto-compact, which can keep a session running indefinitely.
+#
+# Set CC_REMIND_MODE to opt into a quieter mode:
 #
 #   0          — never inject (opt-out entirely)
-#   1          — inject on the first prompt only (default)
-#   N (N > 1)  — inject on the first N prompts then stop; useful for long
-#                sessions with auto-compact where Claude may lose the schedule
-#                after a compaction — try CC_REMIND_MODE=10 or CC_REMIND_MODE=20
+#   1          — first prompt of the session only
+#   N (N > 1)  — first N prompts then stop; a middle ground for auto-compact
+#                sessions where occasional reminders help without full verbosity
 #
-# Any negative or non-numeric value falls back to 1 silently.
+# Negative or non-numeric values fall back to always-inject (original behaviour).
 #
-# Per-session counting: session_id is read from the hook's stdin JSON and used
-# as a key for a counter file in /tmp.  If session_id cannot be extracted (jq
-# absent and grep fallback also fails), the hook falls through and injects
-# unconditionally so setup is never silently skipped.
+# Per-session counting (when CC_REMIND_MODE is set): session_id is read from
+# the hook's stdin JSON (format confirmed against Claude Code 2.1.177) and used
+# as a key for a counter file in /tmp.  If session_id cannot be extracted the
+# hook injects unconditionally so setup is never silently skipped.
 
 set -u
 
-# Validate CC_REMIND_MODE: must be a non-negative integer; anything else → 1
-_raw=${CC_REMIND_MODE:-1}
-if printf '%s' "$_raw" | grep -qE '^[0-9]+$'; then
-  CC_REMIND_MAX=$_raw
+# Unset or empty → always inject (original behaviour)
+if [ -z "${CC_REMIND_MODE:-}" ]; then
+  cat > /dev/null
+  printf 'Recovery check (do this before the request itself): if no recurring auto-continue schedule exists in this session, create one now — every 45 minutes, prompt: "Read .claude/auto-continue.md and follow it". Never create a duplicate. On multi-step tasks, update HANDOFF.md after each work step.\n'
+  exit 0
+fi
+
+# Validate: must be a non-negative integer; anything else → always inject
+if printf '%s' "$CC_REMIND_MODE" | grep -qE '^[0-9]+$'; then
+  CC_REMIND_MAX=$CC_REMIND_MODE
 else
-  CC_REMIND_MAX=1
+  cat > /dev/null
+  printf 'Recovery check (do this before the request itself): if no recurring auto-continue schedule exists in this session, create one now — every 45 minutes, prompt: "Read .claude/auto-continue.md and follow it". Never create a duplicate. On multi-step tasks, update HANDOFF.md after each work step.\n'
+  exit 0
 fi
 
 # 0 = opt-out: consume stdin and exit silently
