@@ -1,10 +1,19 @@
 # cc-session-recover
 
-Your long Claude Code task survives quota stops — and continues by itself after the reset, with no prompt from you.
+**AFK mode for Claude Code.**
 
-When quota or a rate limit kills a session mid-task, Claude normally just stops until you come back and tell it to continue. This workflow removes that. Claude keeps a recovery note (`HANDOFF.md`) as it works, retries on a slow schedule while quota is blocked, and the first attempt after the reset picks the task up exactly where it stopped.
+Start a long Claude Code task, walk away, sleep, hit quota, close the terminal,
+come back later, the task still knows where it was and how to continue.
 
-Every part of this has been verified against a genuine quota stop, end to end.
+- ✅ No quota bypass
+- ✅ No `tmux` injection
+- ✅ Exact-session resume
+- ✅ `HANDOFF.md` written to disk
+- ✅ Manual fallback: `Read HANDOFF.md and continue`
+
+[![Claude Code continuing after a real quota stop](docs/assets/cc-session-recover-demo.gif)](docs/assets/cc-session-recover-demo.mp4)
+
+Real quota stop on June 12: scheduled attempts waited, then Claude continued after reset.
 
 ## Install
 
