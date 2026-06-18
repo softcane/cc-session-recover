@@ -12,7 +12,7 @@ come back later, the task still knows where it was and how to continue.
 
 [![Claude Code continuing after a real quota stop](docs/assets/cc-session-recover-demo.gif)](docs/assets/cc-session-recover-demo.mp4)
 
-Real quota stop on June 12: scheduled attempts waited, then Claude continued after reset.
+Example: My Claude Code quota stopped on June 12, scheduled attempts waited, then Claude continued after the reset. No babysitting
 
 ## Install
 
