@@ -5,11 +5,10 @@
 Start a long Claude Code task, walk away, sleep, hit quota, close the terminal,
 come back later, the task still knows where it was and how to continue.
 
-- ✅ No quota bypass
 - ✅ No `tmux` injection
 - ✅ Exact-session resume
 - ✅ `HANDOFF.md` written to disk
-- ✅ Manual fallback: `Read HANDOFF.md and continue`
+- ✅ Resume: `Read HANDOFF.md and continue`
 
 [![Claude Code continuing after a real quota stop](docs/assets/cc-session-recover-demo.gif)](docs/assets/cc-session-recover-demo.mp4)
 
