@@ -4,7 +4,18 @@ This prompt is safe to fire at any time, so if there is nothing to do, that is a
 
 Read `HANDOFF.md` now.
 
-If the Goal in the handoff is complete:
+Decide whether the Goal is complete from the WORK STATE, not from how the Goal
+line is worded. A "DONE" label never overrides a non-empty remaining list:
+
+- The Goal is complete ONLY IF every checklist item is checked (`- [x]`) and no
+  item, table row, or status line carries unfinished-work language — an unchecked
+  `- [ ]` box, or words like "NOT merged", "not done", "quota hit", "blocked",
+  "pending", "remaining", "TODO", "re-implement", or "next session".
+- If any such unfinished marker exists, the Goal is INCOMPLETE — even if the Goal
+  line, a heading, or the Current Status text says "DONE" or "complete". When the
+  Goal line and the remaining list disagree, the remaining list wins.
+
+If the Goal is complete:
 
 1. Update `HANDOFF.md` so Current Status and the checklist show the goal is complete.
 2. Cancel this recurring schedule if one exists.
