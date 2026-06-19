@@ -113,6 +113,66 @@ printf '%s\n' "$INJECTED" | grep -Fq "auto-continue.md" || fail "injection missi
 printf '%s\n' "$INJECTED" | grep -Fq "HANDOFF.md" || fail "injection missing handoff instruction"
 printf 'ok: SessionStart hook printed the standing instructions\n'
 
+# Real UserPromptSubmit JSON format captured from Claude Code 2.1.177:
+# {"session_id":"...","transcript_path":"...","cwd":"...","permission_mode":"...","hook_event_name":"UserPromptSubmit","prompt":"..."}
+REMIND_HOOK="$DUMMY/.claude/hooks/remind-on-prompt.sh"
+REMIND_JSON='{"session_id":"remind-test-session","hook_event_name":"UserPromptSubmit","prompt":"do something","cwd":"/tmp","permission_mode":"default","transcript_path":"/tmp/t.jsonl"}'
+remind() { printf '%s' "$REMIND_JSON" | CC_REMIND_MODE="${1:-}" bash "$REMIND_HOOK"; }
+remind_sid() { printf '%s' "$2" | CC_REMIND_MODE="${1:-}" bash "$REMIND_HOOK"; }
+
+step "remind-on-prompt: default (CC_REMIND_MODE unset) injects on every prompt"
+rm -f "/tmp/cc-sr-count-remind-test-session"
+OUT1=$(remind_sid "" "$REMIND_JSON"); OUT2=$(remind_sid "" "$REMIND_JSON"); OUT3=$(remind_sid "" "$REMIND_JSON")
+printf '%s' "$OUT1" | grep -Fq "Recovery check" || fail "default: prompt 1 should inject"
+printf '%s' "$OUT2" | grep -Fq "Recovery check" || fail "default: prompt 2 should inject"
+printf '%s' "$OUT3" | grep -Fq "Recovery check" || fail "default: prompt 3 should inject"
+printf 'ok: default (unset) injects on every prompt — original behaviour preserved\n'
+
+step "remind-on-prompt: CC_REMIND_MODE=1 injects once then stops"
+rm -f "/tmp/cc-sr-count-remind-test-session"
+OUT1=$(remind 1); OUT2=$(remind 1); OUT3=$(remind 1)
+printf '%s' "$OUT1" | grep -Fq "Recovery check" || fail "CC_REMIND_MODE=1: prompt 1 should inject"
+[ -z "$OUT2" ] || fail "CC_REMIND_MODE=1: prompt 2 should be silent, got: $OUT2"
+[ -z "$OUT3" ] || fail "CC_REMIND_MODE=1: prompt 3 should be silent, got: $OUT3"
+printf 'ok: CC_REMIND_MODE=1 injected once then stopped\n'
+
+step "remind-on-prompt: CC_REMIND_MODE=3 injects first 3 prompts then stops"
+rm -f "/tmp/cc-sr-count-remind-test-session"
+OUT1=$(remind 3); OUT2=$(remind 3); OUT3=$(remind 3); OUT4=$(remind 3); OUT5=$(remind 3)
+printf '%s' "$OUT1" | grep -Fq "Recovery check" || fail "CC_REMIND_MODE=3: prompt 1 should inject"
+printf '%s' "$OUT2" | grep -Fq "Recovery check" || fail "CC_REMIND_MODE=3: prompt 2 should inject"
+printf '%s' "$OUT3" | grep -Fq "Recovery check" || fail "CC_REMIND_MODE=3: prompt 3 should inject"
+[ -z "$OUT4" ] || fail "CC_REMIND_MODE=3: prompt 4 should be silent, got: $OUT4"
+[ -z "$OUT5" ] || fail "CC_REMIND_MODE=3: prompt 5 should be silent, got: $OUT5"
+printf 'ok: CC_REMIND_MODE=3 injected exactly 3 times then stopped\n'
+
+step "remind-on-prompt: CC_REMIND_MODE=0 never injects"
+rm -f "/tmp/cc-sr-count-remind-test-session"
+OUT1=$(remind 0); OUT2=$(remind 0)
+[ -z "$OUT1" ] || fail "CC_REMIND_MODE=0: prompt 1 should be silent, got: $OUT1"
+[ -z "$OUT2" ] || fail "CC_REMIND_MODE=0: prompt 2 should be silent, got: $OUT2"
+printf 'ok: CC_REMIND_MODE=0 never injected\n'
+
+step "remind-on-prompt: invalid CC_REMIND_MODE falls back to always-inject"
+rm -f "/tmp/cc-sr-count-remind-test-session"
+OUT1=$(remind -5); OUT2=$(remind -5)
+printf '%s' "$OUT1" | grep -Fq "Recovery check" || fail "negative CC_REMIND_MODE: prompt 1 should inject"
+printf '%s' "$OUT2" | grep -Fq "Recovery check" || fail "negative CC_REMIND_MODE: prompt 2 should also inject (fell back to always)"
+rm -f "/tmp/cc-sr-count-remind-test-session"
+OUT3=$(remind abc); OUT4=$(remind abc)
+printf '%s' "$OUT3" | grep -Fq "Recovery check" || fail "non-numeric CC_REMIND_MODE: prompt 1 should inject"
+printf '%s' "$OUT4" | grep -Fq "Recovery check" || fail "non-numeric CC_REMIND_MODE: prompt 2 should also inject (fell back to always)"
+printf 'ok: invalid CC_REMIND_MODE values fell back to always-inject\n'
+
+step "remind-on-prompt: missing session_id always injects (safe fallback)"
+NO_SID_JSON='{"hook_event_name":"UserPromptSubmit","prompt":"test"}'
+OUT1=$(remind_sid 1 "$NO_SID_JSON"); OUT2=$(remind_sid 1 "$NO_SID_JSON")
+printf '%s' "$OUT1" | grep -Fq "Recovery check" || fail "no session_id: prompt 1 should inject"
+printf '%s' "$OUT2" | grep -Fq "Recovery check" || fail "no session_id: prompt 2 should also inject (no counter available)"
+printf 'ok: missing session_id falls through and always injects\n'
+
+rm -f "/tmp/cc-sr-count-remind-test-session"
+
 step "Fake status line input: reset time should be cached"
 printf '{"workspace":{"project_dir":"%s"},"model":{"display_name":"Test"},"rate_limits":{"five_hour":{"used_percentage":97,"resets_at":%s}}}' \
   "$DUMMY" "$(( $(date +%s) + 4 ))" \

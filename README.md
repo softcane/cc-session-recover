@@ -47,6 +47,7 @@ If quota dies mid-task, work resumes automatically after the reset.
 - It does not bypass quota. It only waits for the reset.
 - The basic flow needs the terminal to stay open. A closed-terminal recovery mode exists; see the docs.
 - Worst case is never lost work: the recovery note is always on disk, and "Read HANDOFF.md and continue" restores any session by hand.
+- Prompt injection frequency defaults to every prompt. Set `CC_REMIND_MODE=N` to limit to the first N prompts per session. See [Full details](docs/claude-code-auto-resume.md#tuning-prompt-injection-frequency).
 
 ## Docs
 

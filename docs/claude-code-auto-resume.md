@@ -106,6 +106,30 @@ If that file already exists, the installer preserves it and merges in the recove
 When quota stops a turn, the hook appends a note to `HANDOFF.md`.
 It also writes raw hook input to `.claude/stop-failure-events.jsonl` and a marker to `.claude/quota-blocked.json`.
 
+## Tuning Prompt Injection Frequency
+
+By default the `UserPromptSubmit` hook injects the recovery instruction on
+every prompt. This ensures Claude sets up the heartbeat schedule even after
+context rolls over or auto-compact runs a session indefinitely.
+
+Set `CC_REMIND_MODE` to reduce the frequency if you prefer a quieter context window:
+
+| `CC_REMIND_MODE` | Behaviour |
+|---|---|
+| unset *(default)* | Every prompt — most reliable for long and auto-compact sessions |
+| `1` | First prompt of the session only |
+| `N` (positive integer) | First N prompts then stop — good middle ground |
+| `0` | Never inject — full opt-out |
+
+Export it in your shell before starting Claude:
+
+```sh
+export CC_REMIND_MODE=5   # inject on first 5 prompts only
+claude
+```
+
+Or add it permanently to your shell profile (`~/.zshrc` or `~/.bashrc`).
+
 ## Optional Unattended Watcher
 
 The heartbeat needs an open terminal.
@@ -153,7 +177,15 @@ The wrapper caches the fields and passes the display through unchanged.
 Before you rely on the watcher:
 
 - Exit the interactive Claude Code session, or two sessions may work on the same task.
-- Configure project permissions, or accept the default `--permission-mode acceptEdits`.
+- **Understand the default permission level.** The watcher resumes Claude with
+  `--permission-mode acceptEdits`, which lets Claude create and modify files in
+  your project without asking you first.  There is no human in the loop during
+  an unattended resume.  If that is not acceptable for your project, override it:
+
+  ```sh
+  QUOTA_WATCH_CLAUDE_ARGS="--permission-mode default" npx cc-session-recover watch /path/to/project
+  ```
+
 - Set `QUOTA_WATCH_INTERVAL` and `QUOTA_WATCH_CLAUDE_ARGS` if you need different retry timing or claude flags.
 
 ## Test Without Real Quota
