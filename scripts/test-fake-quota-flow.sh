@@ -42,6 +42,8 @@ mkdir -p "$DUMMY"
 git -C "$DUMMY" init -q
 bash "$TEMPLATE_ROOT/scripts/install-into-project.sh" --enable-local-hook "$DUMMY" >/dev/null
 [ -f "$DUMMY/.claude/settings.local.json" ] || fail "hook settings not installed"
+[ -x "$DUMMY/.claude/session-recover.js" ] || fail "Node recovery runtime not installed"
+[ -f "$DUMMY/session-recover.yaml" ] || fail "default recovery configuration not installed"
 [ ! -d "$DUMMY/scripts" ] || fail "install must not create a scripts folder in the target"
 [ ! -d "$DUMMY/docs" ] || fail "install must not create a docs folder in the target"
 jq -e '.hooks.SessionStart and .hooks.UserPromptSubmit and .hooks.StopFailure' "$DUMMY/.claude/settings.local.json" >/dev/null \
@@ -125,7 +127,7 @@ printf '{"session_id":"fake-session-123","hook_event_name":"StopFailure","error"
   | CLAUDE_PROJECT_DIR="$DUMMY" bash "$DUMMY/.claude/hooks/log-stop-failure.sh"
 [ -f "$DUMMY/.claude/stop-failure-events.jsonl" ] || fail "missing stop-failure log"
 [ -f "$DUMMY/.claude/quota-blocked.json" ] || fail "missing quota-blocked marker"
-grep -Fq "hit a rate limit" "$DUMMY/HANDOFF.md" || fail "missing handoff note"
+grep -Fq "stopped with a rate limit" "$DUMMY/HANDOFF.md" || fail "missing typed handoff note"
 SESSION=$(jq -r '.hook_input.session_id // empty' "$DUMMY/.claude/quota-blocked.json")
 [ "$SESSION" = "fake-session-123" ] || fail "marker has wrong session_id: $SESSION"
 ERROR=$(jq -r '.hook_input.error // empty' "$DUMMY/.claude/quota-blocked.json")

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 — 2026-06-22
+
+- Add `session-recover.yaml` with the two supported settings: transient error selection and fixed retry minutes.
+- Preserve the existing rate-limit-only, 20-minute behavior when configuration is missing.
+- Log every typed StopFailure, cancel same-session stale recovery for disabled or permanent failures, and fail closed on invalid configuration.
+- Keep quota reset-time priority for rate limits while using fixed timing for overloads and server errors.
+- Preserve edited YAML, unrelated hook handlers, and existing Claude settings across npm and clone-installer upgrades.
+- Reject stale quota observations and semantically invalid or non-retryable markers before invoking Claude.
+- Add packaged-artifact end-to-end coverage for configuration, malformed state, timing, watcher restart, exact-session resume, race-safe cleanup, and failure paths.
+
 ## 0.1.5 — 2026-06-13
 
 - Add a `UserPromptSubmit` recovery reminder hook so the schedule instruction is repeated next to every prompt, not just at session start (it was getting buried in long sessions).

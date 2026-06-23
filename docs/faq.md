@@ -21,6 +21,23 @@ The weak part is Claude following the injected instructions, such as keeping `HA
 After your first real quota stop, check `.claude/stop-failure-events.jsonl`.
 That file confirms whether the hook fired.
 
+## Which Failures Can Recover Automatically?
+
+`session-recover.yaml` can enable `rate_limit`, `overloaded`, and
+`server_error`. The default remains `rate_limit` only.
+
+Claude Code owns the HTTP-to-hook classification. In Claude Code `2.1.178`,
+controlled HTTP 529 responses were reported as `server_error`, not
+`overloaded`. Enable both names if you want recovery regardless of that
+classification.
+
+Authentication, billing, invalid-request, model-not-found, and unknown failures
+are logged but not retried. If one of those failures arrives for the active
+session, its stale retry marker is removed.
+
+Invalid configuration fails closed. Fix the reported YAML error before
+automatic recovery can start again.
+
 ## What Still Needs A Human?
 
 You still need to:

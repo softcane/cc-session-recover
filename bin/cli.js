@@ -26,7 +26,10 @@ const FILES = [
   '.claude/hooks/remind-on-prompt.sh',
 ];
 
-const COPY_IF_MISSING = ['HANDOFF.md'];
+const COPY_IF_MISSING = [
+  { source: 'templates/HANDOFF.md', destination: 'HANDOFF.md' },
+  { source: 'session-recover.yaml', destination: 'session-recover.yaml' },
+];
 
 // HANDOFF.md must stay editable by unattended Claude runs, so it cannot live
 // in .claude/ (Claude Code blocks edits there). Ignoring it in git gives the
@@ -54,14 +57,48 @@ function readJson(file) {
 }
 
 function addMissingHookGroups(existingGroups, incomingGroups) {
-  const merged = Array.isArray(existingGroups) ? existingGroups.slice() : [];
+  let merged = Array.isArray(existingGroups) ? existingGroups.slice() : [];
   for (const group of incomingGroups || []) {
     const encoded = JSON.stringify(group);
-    if (!merged.some((existing) => JSON.stringify(existing) === encoded || hasSameRecoveryHook(existing, group))) {
-      merged.push(group);
+    const incomingScripts = recoveryHookScripts(group);
+    if (!incomingScripts.length) {
+      if (!merged.some((existing) => JSON.stringify(existing) === encoded)) merged.push(group);
+      continue;
     }
+
+    const next = [];
+    let exactGroupKept = false;
+    for (const existing of merged) {
+      if (JSON.stringify(existing) === encoded) {
+        if (!exactGroupKept) {
+          next.push(existing);
+          exactGroupKept = true;
+        }
+        continue;
+      }
+
+      if (!hasSameRecoveryHook(existing, group)) {
+        next.push(existing);
+        continue;
+      }
+
+      const handlers = Array.isArray(existing && existing.hooks) ? existing.hooks : [];
+      const remainingHandlers = handlers.filter((handler) => !handlerUsesScripts(handler, incomingScripts));
+      if (remainingHandlers.length) next.push({ ...existing, hooks: remainingHandlers });
+    }
+    if (!exactGroupKept) next.push(group);
+    merged = next;
   }
   return merged;
+}
+
+function handlerUsesScripts(handler, scripts) {
+  return Boolean(
+    handler &&
+    handler.type === 'command' &&
+    typeof handler.command === 'string' &&
+    scripts.some((script) => handler.command.includes(script)),
+  );
 }
 
 function recoveryHookScripts(group) {
@@ -109,7 +146,16 @@ function usage() {
 
 function watch(target) {
   const script = path.join(TEMPLATE_ROOT, 'scripts', 'quota-watcher.sh');
-  const child = spawn('bash', [script, target], { stdio: 'inherit' });
+  const detached = process.platform !== 'win32';
+  const child = spawn('bash', [script, target], { stdio: 'inherit', detached });
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => {
+      try {
+        if (detached) process.kill(-child.pid, signal);
+        else child.kill(signal);
+      } catch (_) {}
+    });
+  }
   child.on('exit', (code) => process.exit(code === null ? 1 : code));
   child.on('error', (err) => {
     console.error(`Could not start watcher: ${err.message}`);
@@ -151,10 +197,14 @@ function main() {
     }
   }
 
-  for (const rel of COPY_IF_MISSING) {
-    const dest = path.join(target, rel);
+  const runtimeDestination = path.join(target, '.claude', 'session-recover.js');
+  fs.copyFileSync(path.join(TEMPLATE_ROOT, 'lib', 'recovery.js'), runtimeDestination);
+  try { fs.chmodSync(runtimeDestination, 0o755); } catch (_) { /* no-op on Windows */ }
+
+  for (const file of COPY_IF_MISSING) {
+    const dest = path.join(target, file.destination);
     if (!fs.existsSync(dest)) {
-      fs.copyFileSync(path.join(TEMPLATE_ROOT, rel), dest);
+      fs.copyFileSync(path.join(TEMPLATE_ROOT, file.source), dest);
     }
   }
 

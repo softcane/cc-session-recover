@@ -1,9 +1,10 @@
 # cc-session-recover
 
-**AFK mode for Claude Code.**
+**AFK recovery for transient Claude Code failures.**
 
-Start a long Claude Code task, walk away, sleep, hit quota, close the terminal,
-come back later, the task still knows where it was and how to continue.
+Start a long Claude Code task, walk away, hit a configured transient failure,
+close the terminal, come back later, and the task still knows where it was and
+how to continue.
 
 - ✅ No `tmux` injection
 - ✅ Exact-session resume
@@ -24,6 +25,23 @@ npx cc-session-recover init /path/to/project
 
 Approve the hooks once when Claude Code asks on the next start. That's the whole setup.
 
+The installer creates `session-recover.yaml`:
+
+```yaml
+errors:
+  - rate_limit
+
+retry_minutes: 20
+```
+
+`errors` can contain `rate_limit`, `overloaded`, and `server_error`.
+`retry_minutes` is the fallback interval when no future quota reset time is known.
+Missing YAML keeps the original rate-limit-only, 20-minute behavior.
+Invalid YAML or values fail closed and do not start recovery.
+Reinstalling preserves an existing configuration.
+Claude Code supplies the typed error name. To cover capacity failures across
+CLI versions, enable both `overloaded` and `server_error`.
+
 ## Use
 
 ```sh
@@ -33,7 +51,8 @@ claude
 
 Give Claude your task, normally. Nothing extra to type — the injected standing instructions make Claude keep the recovery note and set its own retry schedule. Leave the terminal open and walk away.
 
-If quota dies mid-task, work resumes automatically after the reset.
+If a configured transient failure stops the task, work resumes automatically
+after the reset time or retry interval.
 
 ## Why This Approach Is Stronger
 
@@ -44,7 +63,8 @@ If quota dies mid-task, work resumes automatically after the reset.
 
 ## Limits
 
-- It does not bypass quota. It only waits for the reset.
+- It does not bypass quota or provider failures. It waits and resumes the exact session.
+- Authentication, billing, invalid-request, model-not-found, and unknown errors are logged but never retried.
 - The basic flow needs the terminal to stay open. A closed-terminal recovery mode exists; see the docs.
 - Worst case is never lost work: the recovery note is always on disk, and "Read HANDOFF.md and continue" restores any session by hand.
 

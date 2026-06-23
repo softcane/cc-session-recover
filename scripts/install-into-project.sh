@@ -60,15 +60,44 @@ merge_hook_settings() {
         select($command | contains(.))
       ];
     def same_recovery_hook($existing; $incoming):
-      (recovery_hook_scripts as $existing_scripts |
+      (($existing | recovery_hook_scripts) as $existing_scripts |
         ($incoming | recovery_hook_scripts) as $incoming_scripts |
         (($incoming_scripts | length) > 0) and
         any($incoming_scripts[]; . as $script | any($existing_scripts[]; . == $script))
       );
+    def handler_uses_any($scripts):
+      (.type == "command") and
+      (.command | type == "string") and
+      (.command as $command |
+        any($scripts[]; . as $script | $command | contains($script))
+      );
+    def merge_one($incoming):
+      ($incoming | recovery_hook_scripts) as $incoming_scripts |
+      if ($incoming_scripts | length) == 0 then
+        if any(.[]; . == $incoming) then . else . + [$incoming] end
+      else
+        reduce .[] as $group ({groups: [], exact: false};
+          if $group == $incoming then
+            if .exact then . else .groups += [$group] | .exact = true end
+          elif same_recovery_hook($group; $incoming) then
+            ($group | .hooks = [
+              (.hooks // [])[] |
+              select((handler_uses_any($incoming_scripts)) | not)
+            ]) as $remaining |
+            if (($remaining.hooks // []) | length) > 0
+            then .groups += [$remaining]
+            else .
+            end
+          else
+            .groups += [$group]
+          end
+        ) |
+        if .exact then .groups else .groups + [$incoming] end
+      end;
     def add_missing($incoming):
-      as_array as $existing |
-      reduce (($incoming // []) | as_array)[] as $item ($existing;
-        if any(.[]; (. == $item) or same_recovery_hook(.; $item)) then . else . + [$item] end
+      as_array |
+      reduce (($incoming // []) | as_array)[] as $item (.;
+        merge_one($item)
       );
     def merge_hooks($incoming):
       as_object as $base |
@@ -98,14 +127,19 @@ cp "$TEMPLATE_ROOT/.claude/hooks/inject-standing-instructions.sh" "$TARGET/.clau
 cp "$TEMPLATE_ROOT/.claude/hooks/remind-on-prompt.sh" "$TARGET/.claude/hooks/remind-on-prompt.sh"
 cp "$TEMPLATE_ROOT/.claude/settings.example.json" "$TARGET/.claude/settings.example.json"
 cp "$TEMPLATE_ROOT/.claude/hooks/log-stop-failure.sh" "$TARGET/.claude/hooks/log-stop-failure.sh"
+cp "$TEMPLATE_ROOT/lib/recovery.js" "$TARGET/.claude/session-recover.js"
 if [ ! -f "$TARGET/HANDOFF.md" ]; then
-  cp "$TEMPLATE_ROOT/HANDOFF.md" "$TARGET/HANDOFF.md"
+  cp "$TEMPLATE_ROOT/templates/HANDOFF.md" "$TARGET/HANDOFF.md"
+fi
+if [ ! -f "$TARGET/session-recover.yaml" ]; then
+  cp "$TEMPLATE_ROOT/session-recover.yaml" "$TARGET/session-recover.yaml"
 fi
 
 chmod +x "$TARGET/.claude/hooks/log-stop-failure.sh"
 chmod +x "$TARGET/.claude/hooks/inject-standing-instructions.sh"
 chmod +x "$TARGET/.claude/hooks/remind-on-prompt.sh"
 chmod +x "$TARGET/.claude/statusline-quota-cache.sh"
+chmod +x "$TARGET/.claude/session-recover.js"
 
 # Keep runtime state out of the target's git history. HANDOFF.md must stay in
 # the project root (Claude Code blocks unattended edits inside .claude/), so

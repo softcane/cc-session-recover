@@ -1,0 +1,4 @@
+errors:
+  - rate_limit
+
+retry_minutes: 20

@@ -22,11 +22,14 @@ require_text() {
 
 require_file ".claude/auto-continue.md"
 require_file "HANDOFF.md"
+require_file "templates/HANDOFF.md"
 require_file ".claude/settings.example.json"
 require_file ".claude/hooks/log-stop-failure.sh"
 require_file ".claude/hooks/inject-standing-instructions.sh"
 require_file ".claude/hooks/remind-on-prompt.sh"
 require_file ".claude/standing-instructions.md"
+require_file "lib/recovery.js"
+require_file "session-recover.yaml"
 require_file "scripts/test-fake-quota-flow.sh"
 require_file "README.md"
 require_file "docs/claude-code-auto-resume.md"
@@ -39,6 +42,7 @@ require_file "bin/cli.js"
 require_file "LICENSE"
 
 require_text ".claude/auto-continue.md" "HANDOFF.md"
+require_text "templates/HANDOFF.md" "Not set yet"
 require_text ".claude/auto-continue.md" "git status --short"
 require_text ".claude/auto-continue.md" "remaining checklist"
 require_text ".claude/auto-continue.md" "safe to fire at any time"
@@ -68,12 +72,21 @@ require_text ".claude/settings.example.json" "remind-on-prompt.sh"
 require_text ".claude/hooks/remind-on-prompt.sh" "HANDOFF.md"
 require_text ".claude/hooks/remind-on-prompt.sh" "auto-continue.md"
 require_text ".claude/settings.example.json" "StopFailure"
-require_text ".claude/settings.example.json" "rate_limit"
 require_text ".claude/settings.example.json" "log-stop-failure.sh"
 
-require_text ".claude/hooks/log-stop-failure.sh" "stop-failure-events.jsonl"
-require_text ".claude/hooks/log-stop-failure.sh" "cannot schedule"
-require_text ".claude/hooks/log-stop-failure.sh" "quota-blocked.json"
+if jq -e '.hooks.StopFailure[] | has("matcher")' "$ROOT/.claude/settings.example.json" >/dev/null; then
+  fail ".claude/settings.example.json StopFailure hook must receive every API failure"
+fi
+
+require_text ".claude/hooks/log-stop-failure.sh" "session-recover.js"
+require_text "lib/recovery.js" "stop-failure-events.jsonl"
+require_text "lib/recovery.js" "cannot schedule"
+require_text "lib/recovery.js" "quota-blocked.json"
+require_text "lib/recovery.js" "rate_limit"
+require_text "lib/recovery.js" "overloaded"
+require_text "lib/recovery.js" "server_error"
+require_text "session-recover.yaml" "errors"
+require_text "session-recover.yaml" "retry_minutes"
 
 require_text "scripts/quota-watcher.sh" "quota-blocked.json"
 require_text "scripts/quota-watcher.sh" "auto-continue.md"
@@ -86,8 +99,13 @@ require_text "scripts/quota-watcher.sh" "session_id"
 [ -x "$ROOT/.claude/hooks/remind-on-prompt.sh" ] || fail ".claude/hooks/remind-on-prompt.sh must be executable"
 [ -x "$ROOT/scripts/test-fake-quota-flow.sh" ] || fail "scripts/test-fake-quota-flow.sh must be executable"
 
-for forbidden in "claude -p" "tmux" "screen" "expect" "TIOCSTI"; do
-  if grep -Fqi -- "$forbidden" "$ROOT/.claude/auto-continue.md" "$ROOT/HANDOFF.md"; then
+if grep -Fqi -- "claude -p" "$ROOT/.claude/auto-continue.md" "$ROOT/HANDOFF.md"; then
+  fail "runtime workflow must not require claude -p"
+fi
+
+for forbidden in "tmux" "screen" "expect" "TIOCSTI"; do
+  if grep -Eqi -- "(^|[^[:alnum:]_])${forbidden}([^[:alnum:]_]|$)" \
+    "$ROOT/.claude/auto-continue.md" "$ROOT/HANDOFF.md"; then
     fail "runtime workflow must not require $forbidden"
   fi
 done

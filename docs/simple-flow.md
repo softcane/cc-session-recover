@@ -7,7 +7,8 @@ The workflow has three parts.
 Claude writes `HANDOFF.md` in the project root.
 After each small step, it records the goal, completed work, and next exact action.
 
-If quota stops the session, Claude can read that file later and continue from the same point.
+If a configured transient failure stops the session, Claude can read that file
+later and continue from the same point.
 You can also read it yourself and see what happened.
 
 ## Alarm
@@ -36,11 +37,14 @@ If you need to close the terminal, run the watcher from another shell:
 npx cc-session-recover watch /path/to/project
 ```
 
-When quota stops Claude, a hook writes a marker file with the session id.
+When a configured `rate_limit`, `overloaded`, or `server_error` failure stops
+Claude, a hook writes a marker file with the session id.
 The watcher reads that marker and tries to resume that exact session.
 
-While quota blocks Claude, the watcher waits.
-After quota resets, the watcher resumes the session without an open Claude Code window and gives Claude the handoff prompt.
+For a rate limit, a known future reset time takes priority.
+Otherwise the watcher waits for `retry_minutes` from `session-recover.yaml`.
+After the failure clears, the watcher resumes the session without an open
+Claude Code window and gives Claude the handoff prompt.
 
 Use the alarm or the watcher.
 Do not use both on the same task, because two Claude sessions can edit the same files.
