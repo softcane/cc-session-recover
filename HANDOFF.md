@@ -9,11 +9,18 @@ Update it after each small step and before any long or risky step.
 
 ## Goal
 
-- Prepare and locally commit the configurable recovery release changes without pushing, publishing, tagging, or creating a release.
+- Rewrite `README.md` with the Stop Slop skill and enable `rate_limit` plus `overloaded` by default.
 
 ## Current Status
 
-- Release preparation is complete and committed locally. The branch is one commit ahead of `origin/main`; nothing has been pushed, published, tagged, or released.
+- The previous release preparation is committed locally at `acdd1ff`.
+- The new default-selection and documentation changes are uncommitted.
+- Baseline check, tests, audit, and package dry-run passed before this change.
+- The runtime default, installed YAML, tests, README, docs, changelog, and PRD now describe `rate_limit` plus `overloaded`.
+- The filtered missing-YAML packaged test and repository check pass after the change.
+- The full release gate, audit, packaged installation, installed-default assertion, and diff check pass.
+- User requested a local commit before moving into the `cc-blackbox` testing plan.
+- `.gitignore` now excludes `Docs Internal/` and `internal/`; the previously tracked `Docs Internal/configurable-recovery-prd.md` is being removed from git, and the local `internal/` copy remains ignored.
 - Release-candidate baseline captured at commit `4c1cc04665aa41dcdfac1ffb46a4bbb2dd7e01e0`.
 - Full tests, dependency audit, package dry-run, and packaged CLI smoke pass on Node `v25.2.1`.
 - `npm run check` failed because this tracked file had been deleted.
@@ -39,18 +46,25 @@ Update it after each small step and before any long or risky step.
 - Removed the isolated proxy containers, network, volume, image, Claude state, package, and scratch project.
 - Preserved the pre-existing `cc-blackbox_cc_blackbox_data` Docker volume.
 - Ran the final workflow lint, audit, full release gate, package installation smoke, registry check, and npm publish dry-run successfully.
+- Read the Stop Slop skill and its phrase, structure, and example references.
+- Rewrote `README.md` to explain default behavior and the recovery path in plain language.
+- Changed missing-YAML recovery to enable `rate_limit` and `overloaded` with the existing 20-minute fallback.
+- Added packaged-artifact assertions for the installed default YAML and overload recovery.
+- Added ignore rules for repo-local internal planning/spec folders before committing.
 
 ## Remaining Checklist
 
-- [x] Complete standards and PRD review of the implementation and tests.
-- [x] Run the Node 16/20/22/24 CI matrix and Node 24 release gate.
-- [x] Run packaged installation and controlled end-to-end recovery verification.
-- [x] Perform the final PRD disconfirmation pass and inspect the working tree.
+- [x] Change runtime and installed YAML defaults.
+- [x] Rewrite the README with Stop Slop rules.
+- [x] Update affected docs, changelog, PRD, and automated expectations.
+- [x] Run the full tests, audit, package gate, and final diff review.
 
 ## Files Changed
 
 - Configurable recovery implementation and documentation listed by `git status`.
 - `HANDOFF.md` restored and updated for release preparation.
+- Default-selection changes in `lib/recovery.js` and `session-recover.yaml`.
+- README, docs, changelog, PRD, verification script, and configurable recovery tests.
 
 ## Commands Run
 
@@ -74,19 +88,32 @@ Update it after each small step and before any long or risky step.
 - npm registry availability check — `0.2.0` is not published.
 - Fresh `0.2.0` artifact install and installed-file/settings assertions — pass.
 - `npm publish --dry-run --ignore-scripts` — pass; no publication occurred.
+- New-task baseline `npm run check` — pass.
+- New-task baseline `npm test` — pass.
+- New-task baseline audit and package dry-run — pass.
+- `TEST_FILTER='missing YAML' node scripts/test-configurable-recovery.js` — pass.
+- Post-change `npm run check` — pass.
+- First `npm run prepublishOnly` — fail: the full guide lost the verifier phrase `quota or rate limit`.
+- Isolated `npm run check` after restoring that compatibility phrase — pass.
+- Final `npm run prepublishOnly` — pass.
+- Final `npm audit --audit-level=moderate` — pass, zero vulnerabilities.
+- Final packaged installation — pass; YAML contains `rate_limit`, `overloaded`, and `retry_minutes: 20`.
+- Final `git diff --check` — pass.
+- Commit-prep `git status --short --branch` — dirty with scoped README/default/docs/runtime/test changes plus tracked internal PRD deletion.
+- Commit-prep `npm run prepublishOnly` — pass.
+- Commit-prep `git diff --check` — pass.
 
 ## Current Errors or Failing Tests
 
-- No active failing test. The original missing-`HANDOFF.md` failure is fixed and its isolated rerun passes.
-- The first proxy failure attempt was intercepted by `cc-blackbox`'s five-error cooldown and correctly arrived as non-retryable `unknown`; the isolated test policy was raised to let Claude reach its native terminal `server_error`.
-- The first watcher assertion expected a fixture label selected from the whole transcript. The watcher had succeeded; the fixture was corrected to inspect only the current message, then the watcher verification passed.
+- No active failing test. The documentation verifier regression is fixed.
 
 ## Known Risks
 
 - A mocked proxy run proves the repository-owned recovery path but not live Anthropic availability.
 - Claude Code `2.1.178` classified controlled HTTP 529 responses as `server_error`, not `overloaded`.
 - Live Anthropic verification remains blocked by the organization's Claude Code OAuth policy; no provider traffic was used in the proxy test.
+- Existing projects keep their YAML during reinstall, so this new default affects fresh installations and projects that lack the file.
 
 ## Next Exact Action
 
-- Await explicit user authorization before any push, tag, GitHub release, or npm publication.
+- Stage only scoped files, create the requested local commit, and then plan the `cc-blackbox` proxy scenario tests. Do not push, tag, publish, or release.

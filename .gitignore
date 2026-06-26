@@ -5,3 +5,7 @@
 .claude/quota-blocked.json
 .claude/scheduled_tasks.json
 .claude/scheduled_tasks.lock
+
+# Repo-local planning/spec scratch space — keep out of releases.
+Docs Internal/
+internal/

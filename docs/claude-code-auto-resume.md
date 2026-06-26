@@ -2,7 +2,8 @@
 
 Use this workflow when Claude Code hits a configured transient failure and you
 do not want to send another prompt.
-A quota or rate limit remains the default configured case.
+Rate limits and overloads are enabled by default.
+A quota or rate limit uses the cached reset time when Claude Code provides one.
 
 It uses `HANDOFF.md` plus a recurring in-session heartbeat.
 It does not bypass quota or provider failures.
@@ -116,6 +117,7 @@ overwriting an existing file:
 ```yaml
 errors:
   - rate_limit
+  - overloaded
 
 retry_minutes: 20
 ```
@@ -128,9 +130,9 @@ The file has exactly two settings:
 - `retry_minutes` is a positive whole number used when no future rate-limit
   reset time is available.
 
-If the file is missing, the watcher keeps the original behavior:
-`rate_limit` only, every 20 minutes. Invalid YAML, unknown fields, unknown error
-names, empty selections, and invalid retry values fail closed.
+If the file is missing, recovery uses `rate_limit` and `overloaded` with a
+20-minute fallback. `server_error` remains opt-in. Invalid YAML, unknown fields,
+unknown error names, empty selections, and invalid retry values fail closed.
 
 Claude Code determines the typed StopFailure error. In Claude Code `2.1.178`,
 controlled HTTP 529 responses were classified as `server_error` rather than

@@ -24,7 +24,7 @@ That file confirms whether the hook fired.
 ## Which Failures Can Recover Automatically?
 
 `session-recover.yaml` can enable `rate_limit`, `overloaded`, and
-`server_error`. The default remains `rate_limit` only.
+`server_error`. The default enables `rate_limit` and `overloaded`.
 
 Claude Code owns the HTTP-to-hook classification. In Claude Code `2.1.178`,
 controlled HTTP 529 responses were reported as `server_error`, not

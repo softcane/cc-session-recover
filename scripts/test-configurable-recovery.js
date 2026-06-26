@@ -307,6 +307,10 @@ async function main() {
     assert(!fs.existsSync(path.join(target, 'scripts')));
     assert(!fs.existsSync(path.join(target, 'docs')));
     assert(fs.readFileSync(handoffPath(target), 'utf8').includes('- Not set yet.'));
+    assert.deepStrictEqual(
+      fs.readFileSync(configPath(target), 'utf8'),
+      'errors:\n  - rate_limit\n  - overloaded\n\nretry_minutes: 20\n',
+    );
 
     const settings = readJson(path.join(target, '.claude', 'settings.local.json'));
     assert.strictEqual(settings.hooks.StopFailure.length, 1);
@@ -396,13 +400,16 @@ async function main() {
       group.hooks.some((hook) => hook.command.includes('log-stop-failure.sh'))).length, 1);
   });
 
-  await test('missing YAML preserves quota-only selection and the 20-minute marker fallback', async () => {
+  await test('missing YAML enables rate limits and overloads with the 20-minute marker fallback', async () => {
     const target = initTarget('missing-yaml-selection');
     fs.unlinkSync(configPath(target));
     runHook(target, realisticEvent('rate_limit', 'missing-yaml-rate'));
     assertMarker(target, 'missing-yaml-rate', 'rate_limit', 20);
-    runHook(target, realisticEvent('overloaded', 'missing-yaml-rate'));
-    assert(!fs.existsSync(markerPath(target)), 'disabled overload must cancel same-session marker');
+    runHook(target, realisticEvent('overloaded', 'missing-yaml-overload'));
+    assertMarker(target, 'missing-yaml-overload', 'overloaded', 20);
+    const overloadResult = await runWatcherToSuccess(target, 1);
+    assert.strictEqual(overloadResult.recordedSleeps[0], 1200);
+    assert(overloadResult.recordedCalls[0].argv.includes('missing-yaml-overload'));
     runHook(target, realisticEvent('server_error', 'missing-yaml-server'));
     assert(!fs.existsSync(markerPath(target)));
     assert.strictEqual(readJsonLines(logPath(target)).length, 3);

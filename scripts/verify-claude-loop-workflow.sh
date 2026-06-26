@@ -86,6 +86,7 @@ require_text "lib/recovery.js" "rate_limit"
 require_text "lib/recovery.js" "overloaded"
 require_text "lib/recovery.js" "server_error"
 require_text "session-recover.yaml" "errors"
+require_text "session-recover.yaml" "overloaded"
 require_text "session-recover.yaml" "retry_minutes"
 
 require_text "scripts/quota-watcher.sh" "quota-blocked.json"

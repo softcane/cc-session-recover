@@ -39,6 +39,8 @@ npx cc-session-recover watch /path/to/project
 
 When a configured `rate_limit`, `overloaded`, or `server_error` failure stops
 Claude, a hook writes a marker file with the session id.
+New installations enable `rate_limit` and `overloaded`. You can add
+`server_error` in `session-recover.yaml`.
 The watcher reads that marker and tries to resume that exact session.
 
 For a rate limit, a known future reset time takes priority.
