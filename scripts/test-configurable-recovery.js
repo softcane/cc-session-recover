@@ -5,7 +5,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, spawnSync } = require('child_process');
+const { execFileSync, spawn, spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const WORK = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-session-recover-config-'));
@@ -104,6 +104,14 @@ function runHook(target, input) {
     input: raw,
     allowFailure: true,
   });
+}
+
+function runInstalledRecovery(target, mode) {
+  const recoveryJsPath = path.join(target, '.claude', 'session-recover.js');
+  return execFileSync('node', [recoveryJsPath, mode], {
+    cwd: target,
+    encoding: 'utf8',
+  }).trim();
 }
 
 function writeConfig(target, errors, retryMinutes = 1) {
@@ -268,6 +276,7 @@ async function main() {
     'session-recover.yaml',
     'lib/recovery.js',
     '.claude/hooks/log-stop-failure.sh',
+    '.claude/commands/session-recover.md',
     '.claude/settings.example.json',
     'scripts/quota-watcher.sh',
     'bin/cli.js',
@@ -287,22 +296,27 @@ async function main() {
   CLI = path.join(TOOL_PROJECT, 'node_modules', '.bin', 'cc-session-recover');
   assert(fs.existsSync(CLI), 'installed package has no CLI');
 
-  await test('packaged artifact installs every runtime file and injects both instruction hooks', async () => {
+  await test('packaged artifact installs every runtime file and injects the StopFailure hook only', async () => {
     const target = initTarget('installed-files');
     for (const required of [
       'HANDOFF.md',
       'session-recover.yaml',
       '.claude/session-recover.js',
       '.claude/auto-continue.md',
-      '.claude/standing-instructions.md',
+      '.claude/commands/session-recover.md',
       '.claude/settings.example.json',
       '.claude/settings.local.json',
       '.claude/statusline-quota-cache.sh',
-      '.claude/hooks/inject-standing-instructions.sh',
-      '.claude/hooks/remind-on-prompt.sh',
       '.claude/hooks/log-stop-failure.sh',
     ]) {
       assert(fs.existsSync(path.join(target, required)), `installed target is missing ${required}`);
+    }
+    for (const deleted of [
+      '.claude/standing-instructions.md',
+      '.claude/hooks/inject-standing-instructions.sh',
+      '.claude/hooks/remind-on-prompt.sh',
+    ]) {
+      assert(!fs.existsSync(path.join(target, deleted)), `installed target still has ${deleted}`);
     }
     assert(!fs.existsSync(path.join(target, 'scripts')));
     assert(!fs.existsSync(path.join(target, 'docs')));
@@ -313,24 +327,9 @@ async function main() {
     );
 
     const settings = readJson(path.join(target, '.claude', 'settings.local.json'));
+    assert.deepStrictEqual(Object.keys(settings.hooks), ['StopFailure']);
     assert.strictEqual(settings.hooks.StopFailure.length, 1);
     assert(!Object.prototype.hasOwnProperty.call(settings.hooks.StopFailure[0], 'matcher'));
-
-    const sessionStart = command('bash', [path.join(target, '.claude', 'hooks', 'inject-standing-instructions.sh')], {
-      cwd: target,
-      env: { CLAUDE_PROJECT_DIR: target },
-      input: JSON.stringify({ session_id: 'session-start', hook_event_name: 'SessionStart', source: 'startup' }),
-    });
-    assert(sessionStart.stdout.includes('auto-continue.md'));
-    assert(sessionStart.stdout.includes('HANDOFF.md'));
-
-    const prompt = command('bash', [path.join(target, '.claude', 'hooks', 'remind-on-prompt.sh')], {
-      cwd: target,
-      env: { CLAUDE_PROJECT_DIR: target },
-      input: JSON.stringify({ session_id: 'prompt', hook_event_name: 'UserPromptSubmit', prompt: 'continue' }),
-    });
-    assert(prompt.stdout.includes('auto-continue'));
-    assert(prompt.stdout.includes('HANDOFF.md'));
   });
 
   await test('npm and clone installers create YAML once, preserve edits, update old hooks, and avoid duplicates', async () => {
@@ -388,8 +387,6 @@ async function main() {
     assert(fs.readFileSync(configPath(cloneTarget), 'utf8').includes('retry_minutes: 9'));
     const cloneSettings = readJson(path.join(cloneTarget, '.claude', 'settings.local.json'));
     assert.strictEqual(cloneSettings.custom, 'preserved');
-    assert.strictEqual(cloneSettings.hooks.SessionStart.length, 1);
-    assert.strictEqual(cloneSettings.hooks.UserPromptSubmit.length, 1);
     const cloneStopGroups = cloneSettings.hooks.StopFailure;
     assert.strictEqual(cloneStopGroups.length, 2);
     const cloneCustomGroup = cloneStopGroups.find((group) =>
@@ -398,6 +395,37 @@ async function main() {
     assert.strictEqual(cloneCustomGroup.matcher, 'rate_limit');
     assert.strictEqual(cloneStopGroups.filter((group) =>
       group.hooks.some((hook) => hook.command.includes('log-stop-failure.sh'))).length, 1);
+  });
+
+  await test('installed runtime check and clear modes report marker readiness exactly', async () => {
+    const target = initTarget('check-clear-runtime');
+    const targetMarker = markerPath(target);
+
+    assert.strictEqual(runInstalledRecovery(target, 'check'), 'NONE');
+
+    const marker = {
+      rate_limit_state: null,
+      hook_input: realisticEvent('rate_limit', 'check-clear-session'),
+      recovery: { error: 'rate_limit', retry_seconds: 100000 },
+    };
+    write(targetMarker, `${JSON.stringify(marker)}\n`);
+    const wait = runInstalledRecovery(target, 'check');
+    assert.match(wait, /^WAIT [0-9]+ rate_limit$/);
+    assert(Number(wait.split(' ')[1]) > 0, `WAIT seconds were not positive: ${wait}`);
+
+    const oldTime = new Date(Date.now() - 200000000);
+    fs.utimesSync(targetMarker, oldTime, oldTime);
+    assert.strictEqual(runInstalledRecovery(target, 'check'), 'READY rate_limit');
+
+    write(targetMarker, `${JSON.stringify({
+      hook_input: realisticEvent('authentication_failed', 'check-clear-auth'),
+      recovery: { error: 'authentication_failed', retry_seconds: 100000 },
+    })}\n`);
+    assert.strictEqual(runInstalledRecovery(target, 'check'), 'NONE');
+
+    assert.strictEqual(runInstalledRecovery(target, 'clear'), '');
+    assert(!fs.existsSync(targetMarker), 'clear did not remove the marker');
+    assert.strictEqual(runInstalledRecovery(target, 'check'), 'NONE');
   });
 
   await test('missing YAML enables rate limits and overloads with the 20-minute marker fallback', async () => {

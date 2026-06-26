@@ -18,12 +18,10 @@ const TEMPLATE_ROOT = path.join(__dirname, '..');
 
 const FILES = [
   '.claude/auto-continue.md',
-  '.claude/standing-instructions.md',
   '.claude/settings.example.json',
   '.claude/statusline-quota-cache.sh',
   '.claude/hooks/log-stop-failure.sh',
-  '.claude/hooks/inject-standing-instructions.sh',
-  '.claude/hooks/remind-on-prompt.sh',
+  '.claude/commands/session-recover.md',
 ];
 
 const COPY_IF_MISSING = [
@@ -43,8 +41,6 @@ const IGNORE_ENTRIES = [
 ];
 const IGNORE_HEADER = '# Claude Code session-recovery runtime state';
 const RECOVERY_HOOK_SCRIPTS = [
-  'inject-standing-instructions.sh',
-  'remind-on-prompt.sh',
   'log-stop-failure.sh',
 ];
 

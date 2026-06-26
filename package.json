@@ -13,7 +13,7 @@
   "files": [
     "bin",
     ".claude/auto-continue.md",
-    ".claude/standing-instructions.md",
+    ".claude/commands/session-recover.md",
     ".claude/settings.example.json",
     ".claude/statusline-quota-cache.sh",
     ".claude/hooks",

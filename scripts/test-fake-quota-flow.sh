@@ -3,7 +3,6 @@
 # End-to-end test of the quota-recovery flow in a throwaway dummy repo.
 #
 # No real quota is touched. It fakes:
-#   - a SessionStart event, to prove the standing instructions get injected
 #   - a rate_limit StopFailure event, to prove the hook logs and writes the marker
 #   - the claude CLI itself, failing twice (quota blocked) then succeeding
 #     (quota reset), to prove the watcher retries and resumes the right session
@@ -44,11 +43,12 @@ bash "$TEMPLATE_ROOT/scripts/install-into-project.sh" --enable-local-hook "$DUMM
 [ -f "$DUMMY/.claude/settings.local.json" ] || fail "hook settings not installed"
 [ -x "$DUMMY/.claude/session-recover.js" ] || fail "Node recovery runtime not installed"
 [ -f "$DUMMY/session-recover.yaml" ] || fail "default recovery configuration not installed"
+[ -f "$DUMMY/.claude/commands/session-recover.md" ] || fail "slash command not installed"
 [ ! -d "$DUMMY/scripts" ] || fail "install must not create a scripts folder in the target"
 [ ! -d "$DUMMY/docs" ] || fail "install must not create a docs folder in the target"
-jq -e '.hooks.SessionStart and .hooks.UserPromptSubmit and .hooks.StopFailure' "$DUMMY/.claude/settings.local.json" >/dev/null \
-  || fail "installed local settings missing recovery hooks"
-printf 'ok: installer activated recovery hooks in local settings\n'
+jq -e '(.hooks | keys == ["StopFailure"]) and (.hooks.StopFailure | length == 1)' "$DUMMY/.claude/settings.local.json" >/dev/null \
+  || fail "installed local settings should contain the StopFailure hook only"
+printf 'ok: installer activated the StopFailure hook only in local settings\n'
 
 step "Existing settings.local should keep settings and receive hooks"
 MERGE_DUMMY="$WORK/merge-repo"
@@ -59,26 +59,25 @@ bash "$TEMPLATE_ROOT/scripts/install-into-project.sh" "$MERGE_DUMMY" >/dev/null
 jq -e '
   (.permissions.allow[0] == "Bash(npm test *)") and
   (.hooks.PostToolUse[0].matcher == "Write") and
-  (.hooks.SessionStart | length > 0) and
-  (.hooks.UserPromptSubmit | length > 0) and
   (.hooks.StopFailure | length > 0)
 ' "$MERGE_DUMMY/.claude/settings.local.json" >/dev/null || fail "bash installer did not merge hooks into existing settings"
 bash "$TEMPLATE_ROOT/scripts/install-into-project.sh" "$MERGE_DUMMY" >/dev/null
-DUPES=$(jq '[.hooks.SessionStart[], .hooks.UserPromptSubmit[], .hooks.StopFailure[]] | length' "$MERGE_DUMMY/.claude/settings.local.json")
-[ "$DUPES" -eq 3 ] || fail "bash installer duplicated recovery hooks on rerun"
+DUPES=$(jq '.hooks.StopFailure | length' "$MERGE_DUMMY/.claude/settings.local.json")
+[ "$DUPES" -eq 1 ] || fail "bash installer duplicated recovery hooks on rerun"
 printf 'ok: bash installer preserved existing settings and merged hooks once\n'
 
-step "Older shell-form recovery hooks should not be duplicated"
+step "Older shell-form StopFailure hook should not be duplicated"
 OLD_DUMMY="$WORK/old-hook-repo"
 mkdir -p "$OLD_DUMMY/.claude"
 jq -n '{
   hooks: {
-    SessionStart: [
+    StopFailure: [
       {
+        matcher: "rate_limit",
         hooks: [
           {
             type: "command",
-            command: "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/inject-standing-instructions.sh"
+            command: "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-stop-failure.sh"
           }
         ]
       }
@@ -86,11 +85,11 @@ jq -n '{
   }
 }' > "$OLD_DUMMY/.claude/settings.local.json"
 bash "$TEMPLATE_ROOT/scripts/install-into-project.sh" "$OLD_DUMMY" >/dev/null
-SESSION_START_COUNT=$(jq '.hooks.SessionStart | length' "$OLD_DUMMY/.claude/settings.local.json")
-[ "$SESSION_START_COUNT" -eq 1 ] || fail "installer duplicated old SessionStart recovery hook"
-jq -e '(.hooks.UserPromptSubmit | length > 0) and (.hooks.StopFailure | length > 0)' \
-  "$OLD_DUMMY/.claude/settings.local.json" >/dev/null || fail "installer failed to add missing hooks next to old hook"
-printf 'ok: installer recognized old recovery hook commands and added only missing hooks\n'
+STOP_FAILURE_COUNT=$(jq '.hooks.StopFailure | length' "$OLD_DUMMY/.claude/settings.local.json")
+[ "$STOP_FAILURE_COUNT" -eq 1 ] || fail "installer duplicated old StopFailure recovery hook"
+jq -e '(.hooks.StopFailure[0] | has("matcher") | not)' \
+  "$OLD_DUMMY/.claude/settings.local.json" >/dev/null || fail "installer failed to replace old matched StopFailure hook"
+printf 'ok: installer recognized old StopFailure hook commands and added only the current hook\n'
 
 step "Node installer should also merge existing settings.local"
 NODE_DUMMY="$WORK/node-merge-repo"
@@ -99,21 +98,12 @@ printf '{"permissions":{"allow":["Bash(npm test *)"]}}\n' > "$NODE_DUMMY/.claude
 node "$TEMPLATE_ROOT/bin/cli.js" init "$NODE_DUMMY" >/dev/null
 jq -e '
   (.permissions.allow[0] == "Bash(npm test *)") and
-  (.hooks.SessionStart | length > 0) and
-  (.hooks.UserPromptSubmit | length > 0) and
   (.hooks.StopFailure | length > 0)
 ' "$NODE_DUMMY/.claude/settings.local.json" >/dev/null || fail "node installer did not merge hooks into existing settings"
 node "$TEMPLATE_ROOT/bin/cli.js" init "$NODE_DUMMY" >/dev/null
-DUPES=$(jq '[.hooks.SessionStart[], .hooks.UserPromptSubmit[], .hooks.StopFailure[]] | length' "$NODE_DUMMY/.claude/settings.local.json")
-[ "$DUPES" -eq 3 ] || fail "node installer duplicated recovery hooks on rerun"
+DUPES=$(jq '.hooks.StopFailure | length' "$NODE_DUMMY/.claude/settings.local.json")
+[ "$DUPES" -eq 1 ] || fail "node installer duplicated recovery hooks on rerun"
 printf 'ok: node installer preserved existing settings and merged hooks once\n'
-
-step "Fake SessionStart: standing instructions should be injected"
-INJECTED=$(printf '{"session_id":"fake-session-123","hook_event_name":"SessionStart","source":"startup"}' \
-  | CLAUDE_PROJECT_DIR="$DUMMY" bash "$DUMMY/.claude/hooks/inject-standing-instructions.sh")
-printf '%s\n' "$INJECTED" | grep -Fq "auto-continue.md" || fail "injection missing heartbeat instruction"
-printf '%s\n' "$INJECTED" | grep -Fq "HANDOFF.md" || fail "injection missing handoff instruction"
-printf 'ok: SessionStart hook printed the standing instructions\n'
 
 step "Fake status line input: reset time should be cached"
 printf '{"workspace":{"project_dir":"%s"},"model":{"display_name":"Test"},"rate_limits":{"five_hour":{"used_percentage":97,"resets_at":%s}}}' \

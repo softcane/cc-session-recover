@@ -5,7 +5,8 @@ do not want to send another prompt.
 Rate limits and overloads are enabled by default.
 A quota or rate limit uses the cached reset time when Claude Code provides one.
 
-It uses `HANDOFF.md` plus a recurring in-session heartbeat.
+It uses `HANDOFF.md` plus a recurring in-session schedule (a heartbeat) that you
+start yourself with `/session-recover`.
 It does not bypass quota or provider failures.
 It waits and resumes the exact recorded session.
 
@@ -17,23 +18,30 @@ Claude Code hooks can do different things:
 - `UserPromptSubmit` can add text beside each prompt you send.
 - `StopFailure` can log data and write files. It cannot inject a prompt or create a schedule.
 
-The template uses `SessionStart` to inject `.claude/standing-instructions.md`.
-Those instructions tell Claude to keep `HANDOFF.md` fresh, create a 45-minute heartbeat for long tasks, and cancel the heartbeat when the task ends.
+The template ships only the `StopFailure` hook. It logs the failure and writes a
+marker file; it cannot continue the session by itself.
 
-The hook guarantees Claude receives the instructions.
-Claude still has to follow them.
+To turn on recovery you run the `/session-recover` command yourself. Claude then
+openly creates one recurring in-session schedule (the heartbeat). Nothing is
+injected behind your back, so newer models do not refuse it.
 
 ## Recommended Flow
 
-With hooks enabled, start `claude` and give the task.
-Claude receives the setup instructions at session start.
+Start `claude`, give your task, then run:
 
-Without hooks, include this setup with the task:
+```text
+/session-recover
+```
+
+That arms one recurring schedule (default 30 minutes; pass a number such as
+`/session-recover 15` to change it). Then you can walk away.
+
+You can also arm it by hand instead of the command:
 
 ```text
 Keep HANDOFF.md updated after every small safe step.
 
-Also create a recurring schedule every 45 minutes with this prompt:
+Also create a recurring schedule every 30 minutes with this prompt:
 
 Read .claude/auto-continue.md and follow it.
 
@@ -43,9 +51,9 @@ Cancel that schedule when the task is fully complete.
 The heartbeat behaves like this:
 
 - While Claude works, the session stays busy and the heartbeat waits.
-- If quota blocks a turn, each heartbeat attempt fails while quota remains blocked.
+- If quota blocks a turn, each heartbeat fire checks the recovery window and waits while quota remains blocked.
 - After quota resets, the next heartbeat reads `HANDOFF.md` and continues the task.
-- `.claude/auto-continue.md` is safe to fire at any time, so a late heartbeat after completion stops cleanly.
+- `.claude/auto-continue.md` is safe to fire at any time, so a late heartbeat after completion stops cleanly and cancels its own schedule.
 
 The terminal must stay open for the heartbeat.
 Use a 30 to 60 minute interval.
@@ -230,7 +238,8 @@ restarts, exact resume arguments, failed-attempt persistence, and cleanup.
 
 The test cannot fake the in-session heartbeat schedule.
 That timer lives inside a real Claude Code session.
-To test it live, start `claude` in a scratch repo, give a small multi-step task, and confirm Claude creates the 45-minute schedule from the injected instructions.
+To test it live, start `claude` in a scratch repo, run `/session-recover`, give a
+small multi-step task, and confirm Claude created one recurring schedule.
 
 ## Why The Interactive Flow Avoids Terminal Hacks
 

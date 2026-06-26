@@ -1,12 +1,12 @@
 # FAQ
 
-## Where Does The 45-Minute Alarm Live?
+## Where Does The Recovery Alarm Live?
 
 Claude Code keeps the alarm inside the running session.
 It does not create a cron job, a launchd job, or a file on disk.
 
-The standing-instructions hook asks Claude to create the alarm when you give a long task.
-Claude creates it with the Claude Code scheduler.
+You start the alarm yourself by running `/session-recover`. Claude then creates
+the recurring schedule with the Claude Code scheduler.
 
 If you close the terminal, the session ends and the alarm dies.
 
@@ -16,7 +16,7 @@ No.
 
 The scripts and watcher have end-to-end tests.
 The Claude Code hooks and schedules use documented behavior.
-The weak part is Claude following the injected instructions, such as keeping `HANDOFF.md` fresh and creating the alarm.
+The weak part is Claude keeping `HANDOFF.md` fresh and doing each step well after the alarm fires.
 
 After your first real quota stop, check `.claude/stop-failure-events.jsonl`.
 That file confirms whether the hook fired.

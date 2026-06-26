@@ -46,8 +46,6 @@ merge_hook_settings() {
   tmp=$(mktemp "${local_settings}.tmp.XXXXXX")
   if jq -s '
     def recovery_scripts: [
-      "inject-standing-instructions.sh",
-      "remind-on-prompt.sh",
       "log-stop-failure.sh"
     ];
     def as_array: if type == "array" then . else [] end;
@@ -118,15 +116,13 @@ merge_hook_settings() {
   fi
 }
 
-mkdir -p "$TARGET/.claude/hooks"
+mkdir -p "$TARGET/.claude/hooks" "$TARGET/.claude/commands"
 
 cp "$TEMPLATE_ROOT/.claude/auto-continue.md" "$TARGET/.claude/auto-continue.md"
-cp "$TEMPLATE_ROOT/.claude/standing-instructions.md" "$TARGET/.claude/standing-instructions.md"
 cp "$TEMPLATE_ROOT/.claude/statusline-quota-cache.sh" "$TARGET/.claude/statusline-quota-cache.sh"
-cp "$TEMPLATE_ROOT/.claude/hooks/inject-standing-instructions.sh" "$TARGET/.claude/hooks/inject-standing-instructions.sh"
-cp "$TEMPLATE_ROOT/.claude/hooks/remind-on-prompt.sh" "$TARGET/.claude/hooks/remind-on-prompt.sh"
 cp "$TEMPLATE_ROOT/.claude/settings.example.json" "$TARGET/.claude/settings.example.json"
 cp "$TEMPLATE_ROOT/.claude/hooks/log-stop-failure.sh" "$TARGET/.claude/hooks/log-stop-failure.sh"
+cp "$TEMPLATE_ROOT/.claude/commands/session-recover.md" "$TARGET/.claude/commands/session-recover.md"
 cp "$TEMPLATE_ROOT/lib/recovery.js" "$TARGET/.claude/session-recover.js"
 if [ ! -f "$TARGET/HANDOFF.md" ]; then
   cp "$TEMPLATE_ROOT/templates/HANDOFF.md" "$TARGET/HANDOFF.md"
@@ -136,8 +132,6 @@ if [ ! -f "$TARGET/session-recover.yaml" ]; then
 fi
 
 chmod +x "$TARGET/.claude/hooks/log-stop-failure.sh"
-chmod +x "$TARGET/.claude/hooks/inject-standing-instructions.sh"
-chmod +x "$TARGET/.claude/hooks/remind-on-prompt.sh"
 chmod +x "$TARGET/.claude/statusline-quota-cache.sh"
 chmod +x "$TARGET/.claude/session-recover.js"
 

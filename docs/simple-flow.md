@@ -13,7 +13,8 @@ You can also read it yourself and see what happened.
 
 ## Alarm
 
-For a long task, Claude creates a 45-minute schedule inside the current Claude Code session:
+For a long task, you run `/session-recover` and Claude creates one recurring
+schedule (default 30 minutes) inside the current Claude Code session:
 
 ```text
 Read .claude/auto-continue.md and follow it.
@@ -55,7 +56,7 @@ Do not use both on the same task, because two Claude sessions can edit the same 
 
 1. Open the project and run `claude`.
 2. Give Claude the task.
-3. Let the hook inject the standing instructions.
+3. Run `/session-recover` to arm the recurring recovery schedule.
 4. Leave the terminal open, or run the watcher if you need to close it.
 
 If everything else fails, run `claude` again and type:

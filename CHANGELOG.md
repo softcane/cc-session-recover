@@ -1,7 +1,10 @@
 # Changelog
 
-## 0.2.0 — 2026-06-22
+## 0.2.0 — 2026-06-26
 
+- Replace the hidden `SessionStart`/`UserPromptSubmit` instruction-injection hooks with a user-run `/session-recover` slash command that openly arms one recurring in-session recovery schedule (default 30 minutes). The example settings now ship the `StopFailure` hook only.
+- Add `check` and `clear` modes to the runtime so the schedule uses a deterministic recovery-window decision (`NONE` / `WAIT` / `READY`) instead of clock math in the prompt.
+- Make `.claude/auto-continue.md` marker-aware and self-cancelling: it waits while the failure window is open, resumes the same session from `HANDOFF.md` once it clears, and deletes its own schedule when the goal is done.
 - Add `session-recover.yaml` with the two supported settings: transient error selection and fixed retry minutes.
 - Enable `rate_limit` and `overloaded` by default with a 20-minute fallback when configuration is missing.
 - Log every typed StopFailure, cancel same-session stale recovery for disabled or permanent failures, and fail closed on invalid configuration.
