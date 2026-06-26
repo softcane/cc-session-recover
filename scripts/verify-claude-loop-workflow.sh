@@ -21,7 +21,6 @@ require_text() {
 }
 
 require_file ".claude/auto-continue.md"
-require_file "HANDOFF.md"
 require_file "templates/HANDOFF.md"
 require_file ".claude/settings.example.json"
 require_file ".claude/hooks/log-stop-failure.sh"
@@ -105,13 +104,13 @@ for deleted in \
   [ ! -e "$ROOT/$deleted" ] || fail "$deleted must not exist"
 done
 
-if grep -Fqi -- "claude -p" "$ROOT/.claude/auto-continue.md" "$ROOT/HANDOFF.md"; then
+if grep -Fqi -- "claude -p" "$ROOT/.claude/auto-continue.md" "$ROOT/templates/HANDOFF.md"; then
   fail "runtime workflow must not require claude -p"
 fi
 
 for forbidden in "tmux" "screen" "expect" "TIOCSTI"; do
   if grep -Eqi -- "(^|[^[:alnum:]_])${forbidden}([^[:alnum:]_]|$)" \
-    "$ROOT/.claude/auto-continue.md" "$ROOT/HANDOFF.md"; then
+    "$ROOT/.claude/auto-continue.md" "$ROOT/templates/HANDOFF.md"; then
     fail "runtime workflow must not require $forbidden"
   fi
 done

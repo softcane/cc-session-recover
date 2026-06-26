@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 — 2026-06-26
+
+- Re-anchor same-session recovery on `git status` before trusting `HANDOFF.md`, so stale handoff notes cannot make recovery repeat already-completed work.
+- Treat the repository-root `HANDOFF.md` as local runtime state: keep it ignored, ship `templates/HANDOFF.md` as the starter, and verify docs against the template.
+
 ## 0.2.0 — 2026-06-26
 
 - Replace the hidden `SessionStart`/`UserPromptSubmit` instruction-injection hooks with a user-run `/session-recover` slash command that openly arms one recurring in-session recovery schedule (default 30 minutes). The example settings now ship the `StopFailure` hook only.

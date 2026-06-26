@@ -1,4 +1,7 @@
 # Personal/runtime Claude Code state — never commit these.
+# HANDOFF.md is this repo's own live dogfood notebook; the shipped starter is
+# templates/HANDOFF.md. Keep the working copy out of git history.
+HANDOFF.md
 .claude/settings.local.json
 .claude/rate-limit-state.json
 .claude/stop-failure-events.jsonl
