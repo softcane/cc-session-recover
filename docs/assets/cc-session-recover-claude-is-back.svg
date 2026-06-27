@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">Claude is back, CC session recovery is installed</title>
+  <desc id="desc">A simple black-and-white office cartoon. A manager tells a developer that Claude is back. The developer says CC session recovery is installed. The manager replies OK, continue.</desc>
+  <defs>
+    <style>
+      .line {
+        fill: none;
+        stroke: #111;
+        stroke-width: 6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .thin {
+        fill: none;
+        stroke: #111;
+        stroke-width: 4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .text {
+        fill: #111;
+        font-family: "Comic Sans MS", "Bradley Hand", "Segoe Print", sans-serif;
+        font-weight: 700;
+      }
+
+      .bubble-text {
+        fill: #111;
+        font-family: "Comic Sans MS", "Bradley Hand", "Segoe Print", sans-serif;
+        font-weight: 600;
+      }
+    </style>
+  </defs>
+
+  <rect width="1280" height="720" fill="#fff"/>
+  <rect x="4" y="4" width="1272" height="712" class="line"/>
+
+  <text x="640" y="96" text-anchor="middle" class="text" font-size="64">CLAUDE IS BACK</text>
+
+  <path d="M70 580 H612" class="thin"/>
+  <path d="M672 580 H1208" class="thin"/>
+
+  <path d="M96 586 V226 H246 V586" class="line"/>
+  <path d="M246 226 L142 178 V638 L246 586" class="line"/>
+  <circle cx="168" cy="420" r="12" class="thin"/>
+  <rect x="166" y="300" width="72" height="48" class="thin"/>
+  <path d="M246 586 H338" class="line"/>
+
+  <circle cx="376" cy="316" r="54" class="line"/>
+  <circle cx="356" cy="305" r="4" fill="#111"/>
+  <circle cx="394" cy="305" r="4" fill="#111"/>
+  <path d="M354 336 Q376 352 398 336" class="thin"/>
+  <path d="M376 370 V510" class="line"/>
+  <path d="M376 410 L308 460" class="line"/>
+  <path d="M308 460 L274 442" class="line"/>
+  <path d="M376 420 L438 474" class="line"/>
+  <path d="M438 474 Q456 492 438 514" class="line"/>
+  <path d="M376 510 L334 606" class="line"/>
+  <path d="M376 510 L420 606" class="line"/>
+  <path d="M334 606 H306" class="line"/>
+  <path d="M420 606 H452" class="line"/>
+  <path d="M352 378 L376 430 L400 378" class="thin"/>
+
+  <path d="M420 156 H840 Q900 156 900 216 V258 Q900 318 840 318 H488 L424 356 L456 318 H420 Q360 318 360 258 V216 Q360 156 420 156 Z" class="line"/>
+  <text x="630" y="214" text-anchor="middle" class="bubble-text" font-size="35">Claude is back.</text>
+  <text x="630" y="262" text-anchor="middle" class="bubble-text" font-size="35">Get back to work.</text>
+
+  <path d="M704 540 V470 Q704 440 734 440 H1014 Q1044 440 1044 470 V540" class="line"/>
+  <path d="M680 540 H1094 V592 H680 Z" class="line"/>
+  <path d="M748 456 H882 L862 540 H724 Z" class="line"/>
+  <circle cx="816" cy="502" r="8" class="thin"/>
+  <path d="M914 494 H986 V540 H914 Z" class="thin"/>
+  <path d="M1006 510 Q1040 510 1030 536 Q1028 546 1012 544" class="thin"/>
+
+  <circle cx="702" cy="380" r="48" class="line"/>
+  <circle cx="684" cy="374" r="4" fill="#111"/>
+  <circle cx="720" cy="374" r="4" fill="#111"/>
+  <path d="M684 398 Q702 412 720 398" class="thin"/>
+  <path d="M702 428 V520" class="line"/>
+  <path d="M702 456 L662 520" class="line"/>
+  <path d="M702 456 L760 520" class="line"/>
+  <path d="M702 520 L664 624" class="line"/>
+  <path d="M702 520 L760 624" class="line"/>
+  <path d="M664 624 H638" class="line"/>
+  <path d="M760 624 H796" class="line"/>
+  <path d="M660 522 Q640 542 650 576" class="thin"/>
+  <path d="M650 576 H724" class="thin"/>
+  <circle cx="646" cy="642" r="10" class="thin"/>
+  <circle cx="726" cy="642" r="10" class="thin"/>
+  <path d="M686 576 V632" class="thin"/>
+
+  <path d="M832 292 H1122 Q1184 292 1184 352 V404 Q1184 464 1122 464 H842 L786 498 L812 464 H832 Q772 464 772 404 V352 Q772 292 832 292 Z" class="line"/>
+  <text x="980" y="354" text-anchor="middle" class="bubble-text" font-size="34">CC session recovery</text>
+  <text x="980" y="402" text-anchor="middle" class="bubble-text" font-size="34">is installed.</text>
+
+  <path d="M198 638 H528 Q578 638 578 676 V682 Q578 704 552 704 H232 Q182 704 182 666 L136 646 L190 650 Q192 644 198 638 Z" class="line"/>
+  <text x="374" y="688" text-anchor="middle" class="bubble-text" font-size="38">OK, continue.</text>
+</svg>
