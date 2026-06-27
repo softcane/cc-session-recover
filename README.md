@@ -15,7 +15,7 @@ session reads the handoff and continues the task.
 
 No tmux tricks. No hidden prompt injection. No OS hacks.
 
-![Claude is down, but CC session recovery is installed](docs/assets/cc-session-recover-claude-is-down.png)
+![Claude is back, and CC session recovery is installed](docs/assets/cc-session-recover-claude-is-down.png)
 
 [![Claude Code continuing after a real quota stop](docs/assets/cc-session-recover-demo.gif)](docs/assets/cc-session-recover-demo.mp4)
 
